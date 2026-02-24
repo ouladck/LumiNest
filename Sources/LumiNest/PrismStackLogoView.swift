@@ -7,9 +7,6 @@ struct PrismStackLogoView: View {
         let scale = size / 160
 
         ZStack {
-            RoundedRectangle(cornerRadius: 24, style: .continuous)
-                .fill(Color(red: 0.96, green: 0.98, blue: 0.98))
-
             RoundedRectangle(cornerRadius: 14, style: .continuous)
                 .fill(Color(red: 0.11, green: 0.23, blue: 0.23).opacity(0.18))
                 .frame(width: 88 * scale, height: 108 * scale)
