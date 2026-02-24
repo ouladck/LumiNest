@@ -206,9 +206,19 @@ struct ContentView: View {
             .pickerStyle(.segmented)
             .frame(width: 180)
 
-            Text("\(viewModel.displayedItems.count)")
-                .foregroundStyle(.secondary)
-                .frame(width: 36, alignment: .trailing)
+            let count = viewModel.displayedItems.count
+            Label {
+                Text("\(count) \(count == 1 ? "item" : "items")")
+                    .font(.caption.weight(.semibold))
+            } icon: {
+                Image(systemName: "photo.on.rectangle.angled")
+                    .font(.caption.weight(.semibold))
+            }
+            .foregroundStyle(.primary)
+            .padding(.horizontal, 10)
+            .frame(height: 30)
+            .background(.thinMaterial)
+            .clipShape(Capsule())
 
             Button("") {
                 isSearchFocused = true
@@ -807,35 +817,54 @@ struct MediaViewer: View {
 
     @ViewBuilder
     private var metadataPanel: some View {
-        VStack(alignment: .leading, spacing: 8) {
+        VStack(alignment: .leading, spacing: 10) {
             if isLoadingMetadata {
-                ProgressView()
-                    .progressViewStyle(.circular)
+                HStack(spacing: 10) {
+                    ProgressView()
+                        .progressViewStyle(.circular)
+                    Text("Loading details...")
+                        .font(.subheadline.weight(.semibold))
+                        .foregroundStyle(.secondary)
+                }
             } else if let metadata {
                 ScrollView {
-                    VStack(alignment: .leading, spacing: 6) {
+                    LazyVStack(alignment: .leading, spacing: 6) {
                         ForEach(metadata.entries) { entry in
-                            HStack(alignment: .top, spacing: 8) {
+                            HStack(alignment: .top, spacing: 4) {
                                 Text(entry.label)
-                                    .foregroundStyle(.secondary)
-                                    .frame(width: 88, alignment: .leading)
+                                    .font(.caption.weight(.bold))
+                                    .foregroundStyle(Color.white.opacity(0.88))
+                                    .frame(width: 96, alignment: .leading)
                                 Text(entry.value)
+                                    .font(.system(size: 14, weight: .semibold))
+                                    .foregroundStyle(.white)
                                     .textSelection(.enabled)
                                     .frame(maxWidth: .infinity, alignment: .leading)
                             }
+                            .padding(10)
                         }
                     }
                 }
-                .frame(maxHeight: 150)
+                .frame(maxHeight: 180)
             } else {
-                Text("No metadata available")
+                Label("No metadata available", systemImage: "info.circle")
                     .foregroundStyle(.secondary)
             }
         }
         .frame(maxWidth: .infinity, alignment: .leading)
-        .padding(12)
-        .background(Color.secondary.opacity(0.08))
-        .clipShape(RoundedRectangle(cornerRadius: 10))
+        .padding(14)
+        .background(
+            LinearGradient(
+                colors: [Color.blue.opacity(0.15), Color.mint.opacity(0.08), Color.orange.opacity(0.12)],
+                startPoint: .topLeading,
+                endPoint: .bottomTrailing
+            )
+        )
+        .clipShape(RoundedRectangle(cornerRadius: 14))
+        .overlay(
+            RoundedRectangle(cornerRadius: 14)
+                .stroke(Color.white.opacity(0.22), lineWidth: 1)
+        )
     }
 
     private func loadMetadata(for item: MediaItem) {
