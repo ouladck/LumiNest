@@ -2,17 +2,17 @@
 import PackageDescription
 
 let package = Package(
-    name: "MacMediaGallery",
+    name: "LumiNest",
     platforms: [
         .macOS(.v13)
     ],
     products: [
-        .executable(name: "MacMediaGalleryApp", targets: ["MacMediaGalleryApp"])
+        .executable(name: "LumiNest", targets: ["LumiNest"])
     ],
     targets: [
         .executableTarget(
-            name: "MacMediaGalleryApp",
-            path: "Sources/MacMediaGalleryApp"
+            name: "LumiNest",
+            path: "Sources/LumiNest"
         )
     ]
 )

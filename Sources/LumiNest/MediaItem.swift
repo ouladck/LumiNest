@@ -6,9 +6,12 @@ enum MediaType {
 }
 
 struct MediaItem: Identifiable, Hashable {
-    let id = UUID()
     let url: URL
     let type: MediaType
+    let createdAt: Date?
+    let fileSize: Int64
+
+    var id: URL { url }
 
     var filename: String {
         url.lastPathComponent

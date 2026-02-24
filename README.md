@@ -16,12 +16,12 @@ A macOS SwiftUI app that lets you:
    ```bash
    open Package.swift
    ```
-3. In Xcode, choose the `MacMediaGalleryApp` scheme.
+3. In Xcode, choose the `LumiNest` scheme.
 4. Press Run.
 
 ### Option 2: SwiftPM
 ```bash
-swift run MacMediaGalleryApp
+swift run LumiNest
 ```
 
 ## Supported media
