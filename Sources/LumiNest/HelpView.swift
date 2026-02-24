@@ -21,8 +21,11 @@ struct HelpView: View {
                     lines: [
                         "Left / Right arrows: previous / next media",
                         "Space: play/pause current video",
+                        "F: add/remove current media from favorites",
                         "R: replay current video",
                         "Esc: close preview",
+                        "Use the fullscreen button in viewer header for media-only full-screen mode",
+                        "Details is collapsible: click the Details line to expand/collapse metadata",
                         "Click outside the preview: close preview"
                     ]
                 )
@@ -31,9 +34,23 @@ struct HelpView: View {
                     title: "Library Tools",
                     lines: [
                         "Switch Grid/List from the header.",
+                        "Use Album picker: All, Favorites, or a custom album.",
                         "Use filters: All, Photos, Videos.",
                         "Sort by Name, Date, or Size.",
                         "Right-click an item for: Open, Reveal in Finder, Copy Path, Move to Trash."
+                    ]
+                )
+
+                helpSection(
+                    title: "Favorites & Albums",
+                    lines: [
+                        "To select a favorite: right-click media and choose Add to Favorites.",
+                        "Favorited items show a yellow star in grid/list.",
+                        "To show only favorites: set Album picker to Favorites.",
+                        "To create an album: right-click media and choose New Album....",
+                        "To add media into an existing album: right-click media -> Add to Album.",
+                        "Use the folder-gear button next to Album picker to rename or delete the selected album.",
+                        "While viewing a selected album, right-click media -> Remove from \"Album\" to unassign it."
                     ]
                 )
             }

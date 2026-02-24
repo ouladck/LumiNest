@@ -7,6 +7,7 @@ A macOS SwiftUI app that lets you:
 - View media in `Grid` or `List` mode.
 - Open any item in a viewer and navigate `Previous` / `Next`.
 - Move through media with swipe (trackpad/mouse drag) or left/right arrow keys.
+- Manage albums and favorites with persistent local SQLite storage.
 
 ## Run
 

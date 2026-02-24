@@ -12,7 +12,10 @@ let package = Package(
     targets: [
         .executableTarget(
             name: "LumiNest",
-            path: "Sources/LumiNest"
+            path: "Sources/LumiNest",
+            linkerSettings: [
+                .linkedLibrary("sqlite3")
+            ]
         )
     ]
 )
