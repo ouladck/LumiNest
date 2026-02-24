@@ -40,16 +40,22 @@ final class GalleryViewModel: ObservableObject {
     @Published var mediaFilter: MediaFilter {
         didSet {
             defaults.set(mediaFilter.rawValue, forKey: Self.filterKey)
+            refreshDisplayedItems()
         }
     }
 
     @Published var sortMode: SortMode {
         didSet {
             defaults.set(sortMode.rawValue, forKey: Self.sortKey)
+            refreshDisplayedItems()
         }
     }
 
-    @Published var searchQuery: String = ""
+    @Published var searchQuery: String = "" {
+        didSet {
+            refreshDisplayedItems(debounced: true)
+        }
+    }
 
     @Published var albumScope: AlbumScope {
         didSet {
@@ -57,6 +63,7 @@ final class GalleryViewModel: ObservableObject {
             if albumScope != .all {
                 selectedCollectionName = nil
             }
+            refreshDisplayedItems()
         }
     }
 
@@ -66,57 +73,18 @@ final class GalleryViewModel: ObservableObject {
             if selectedCollectionName != nil {
                 albumScope = .all
             }
+            refreshDisplayedItems()
         }
     }
 
     @Published private(set) var favorites: Set<String> = []
     @Published private(set) var collections: [String: Set<String>] = [:]
     @Published private(set) var mediaItems: [MediaItem] = []
+    @Published private(set) var displayedItems: [MediaItem] = []
+    @Published private(set) var isLoadingMedia = false
 
     var sortedCollectionNames: [String] {
         collections.keys.sorted { $0.localizedCaseInsensitiveCompare($1) == .orderedAscending }
-    }
-
-    var displayedItems: [MediaItem] {
-        let filteredByType: [MediaItem]
-
-        switch mediaFilter {
-        case .all:
-            filteredByType = mediaItems
-        case .photos:
-            filteredByType = mediaItems.filter { $0.type == .image }
-        case .videos:
-            filteredByType = mediaItems.filter { $0.type == .video }
-        }
-
-        let filteredByAlbum: [MediaItem]
-
-        if let selectedCollectionName,
-           let collectionPaths = collections[selectedCollectionName] {
-            filteredByAlbum = filteredByType.filter { collectionPaths.contains($0.url.path) }
-        } else {
-            switch albumScope {
-            case .all:
-                filteredByAlbum = filteredByType
-            case .favorites:
-                filteredByAlbum = filteredByType.filter { favorites.contains($0.url.path) }
-            }
-        }
-
-        let searched = applySearch(to: filteredByAlbum)
-
-        switch sortMode {
-        case .name:
-            return searched.sorted {
-                $0.filename.localizedCaseInsensitiveCompare($1.filename) == .orderedAscending
-            }
-        case .date:
-            return searched.sorted {
-                ($0.createdAt ?? .distantPast) > ($1.createdAt ?? .distantPast)
-            }
-        case .size:
-            return searched.sorted { $0.fileSize > $1.fileSize }
-        }
     }
 
     private let defaults = UserDefaults.standard
@@ -140,8 +108,11 @@ final class GalleryViewModel: ObservableObject {
     private var folderMonitorSource: DispatchSourceFileSystemObject?
     private var folderMonitorDescriptor: CInt = -1
     private var pendingMonitorReload: DispatchWorkItem?
+    private var pendingSearchRefresh: DispatchWorkItem?
+    private var displayedItemsRefreshGeneration: Int = 0
 
     deinit {
+        pendingSearchRefresh?.cancel()
         stopMonitoringFolder()
     }
 
@@ -169,6 +140,8 @@ final class GalleryViewModel: ObservableObject {
                 loadMedia(from: savedURL)
             }
         }
+
+        refreshDisplayedItems()
     }
 
     func pickFolder() {
@@ -188,6 +161,9 @@ final class GalleryViewModel: ObservableObject {
         if restartMonitor {
             startMonitoringFolder(folder)
         }
+        DispatchQueue.main.async {
+            self.isLoadingMedia = true
+        }
 
         let priorityRaw = defaults.string(forKey: SettingsKeys.scanPriority) ?? ScanPriorityOption.fast.rawValue
         let priority = ScanPriorityOption(rawValue: priorityRaw) ?? .fast
@@ -196,6 +172,8 @@ final class GalleryViewModel: ObservableObject {
             let items = self.scanFolder(folder)
             DispatchQueue.main.async {
                 self.mediaItems = items
+                self.refreshDisplayedItems()
+                self.isLoadingMedia = false
             }
         }
     }
@@ -208,6 +186,7 @@ final class GalleryViewModel: ObservableObject {
             mediaItems.removeAll { $0.id == item.id }
             albumStore.removeMediaEverywhere(path: path)
             reloadAlbumStateFromStore()
+            refreshDisplayedItems()
         } catch {
             NSSound.beep()
         }
@@ -279,6 +258,7 @@ final class GalleryViewModel: ObservableObject {
             map[name] = albumStore.mediaPaths(inAlbum: name)
         }
         collections = map
+        refreshDisplayedItems()
     }
 
     private func migrateLegacyDefaultsIfNeeded() {
@@ -351,18 +331,90 @@ final class GalleryViewModel: ObservableObject {
         return items
     }
 
-    private func applySearch(to items: [MediaItem]) -> [MediaItem] {
-        let query = searchQuery.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard !query.isEmpty else { return items }
+    private func refreshDisplayedItems(debounced: Bool = false) {
+        if debounced {
+            pendingSearchRefresh?.cancel()
+            let work = DispatchWorkItem { [weak self] in
+                self?.refreshDisplayedItems(debounced: false)
+            }
+            pendingSearchRefresh = work
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.18, execute: work)
+            return
+        }
 
-        return items.filter { item in
-            let filename = item.filename
-            let path = item.url.path
-            let ext = item.url.pathExtension
+        displayedItemsRefreshGeneration += 1
+        let generation = displayedItemsRefreshGeneration
 
-            return filename.localizedCaseInsensitiveContains(query)
-                || path.localizedCaseInsensitiveContains(query)
-                || ext.localizedCaseInsensitiveContains(query)
+        let snapshotMediaItems = mediaItems
+        let snapshotFilter = mediaFilter
+        let snapshotSort = sortMode
+        let snapshotSearchQuery = searchQuery
+        let snapshotAlbumScope = albumScope
+        let snapshotSelectedCollectionName = selectedCollectionName
+        let snapshotCollections = collections
+        let snapshotFavorites = favorites
+
+        DispatchQueue.global(qos: .userInitiated).async { [weak self] in
+            guard let self else { return }
+            let filteredByType: [MediaItem]
+
+            switch snapshotFilter {
+            case .all:
+                filteredByType = snapshotMediaItems
+            case .photos:
+                filteredByType = snapshotMediaItems.filter { $0.type == .image }
+            case .videos:
+                filteredByType = snapshotMediaItems.filter { $0.type == .video }
+            }
+
+            let filteredByAlbum: [MediaItem]
+
+            if let snapshotSelectedCollectionName,
+               let collectionPaths = snapshotCollections[snapshotSelectedCollectionName] {
+                filteredByAlbum = filteredByType.filter { collectionPaths.contains($0.url.path) }
+            } else {
+                switch snapshotAlbumScope {
+                case .all:
+                    filteredByAlbum = filteredByType
+                case .favorites:
+                    filteredByAlbum = filteredByType.filter { snapshotFavorites.contains($0.url.path) }
+                }
+            }
+
+            let query = snapshotSearchQuery.trimmingCharacters(in: .whitespacesAndNewlines)
+            let searched: [MediaItem]
+            if query.isEmpty {
+                searched = filteredByAlbum
+            } else {
+                searched = filteredByAlbum.filter { item in
+                    let filename = item.filename
+                    let path = item.url.path
+                    let ext = item.url.pathExtension
+
+                    return filename.localizedCaseInsensitiveContains(query)
+                        || path.localizedCaseInsensitiveContains(query)
+                        || ext.localizedCaseInsensitiveContains(query)
+                }
+            }
+
+            let sorted: [MediaItem]
+            switch snapshotSort {
+            case .name:
+                sorted = searched.sorted {
+                    $0.filename.localizedCaseInsensitiveCompare($1.filename) == .orderedAscending
+                }
+            case .date:
+                sorted = searched.sorted {
+                    ($0.createdAt ?? .distantPast) > ($1.createdAt ?? .distantPast)
+                }
+            case .size:
+                sorted = searched.sorted { $0.fileSize > $1.fileSize }
+            }
+
+            DispatchQueue.main.async {
+                guard generation == self.displayedItemsRefreshGeneration else { return }
+                self.displayedItems = sorted
+            }
         }
     }
 

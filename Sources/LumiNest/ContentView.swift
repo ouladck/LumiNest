@@ -26,6 +26,9 @@ struct ContentView: View {
 
     @State private var selectedItem: MediaItem?
     @State private var isViewerMediaFullscreen = false
+    @State private var isMultiSelectEnabled = false
+    @State private var selectedMediaIDs: Set<URL> = []
+    @State private var loadedItemLimit = 100
     @FocusState private var isSearchFocused: Bool
     @State private var didApplyDefaultLayout = false
 
@@ -43,6 +46,10 @@ struct ContentView: View {
                 }
             }
             .padding(16)
+
+            if viewModel.isLoadingMedia {
+                loadingOverlay
+            }
 
             if let media = selectedItem {
                 ZStack {
@@ -79,6 +86,12 @@ struct ContentView: View {
         }
         .onReceive(NotificationCenter.default.publisher(for: .luminestClearCaches)) { _ in
             thumbnailProvider.clearCache()
+        }
+        .onChange(of: viewModel.displayedItems.map(\.id)) { visibleIDs in
+            selectedMediaIDs.formIntersection(Set(visibleIDs))
+        }
+        .onChange(of: viewModel.displayedItems.count) { _ in
+            resetLoadedItemLimit()
         }
     }
 
@@ -206,6 +219,20 @@ struct ContentView: View {
             .pickerStyle(.segmented)
             .frame(width: 180)
 
+            Button {
+                toggleMultiSelect()
+            } label: {
+                Label("Select", systemImage: isMultiSelectEnabled ? "checkmark.circle.fill" : "checkmark.circle")
+                    .font(.caption.weight(.semibold))
+            }
+            .buttonStyle(.bordered)
+
+            if isMultiSelectEnabled {
+                Text("\(selectedMediaIDs.count) selected")
+                    .font(.caption.weight(.semibold))
+                    .foregroundStyle(.secondary)
+            }
+
             let count = viewModel.displayedItems.count
             Label {
                 Text("\(count) \(count == 1 ? "item" : "items")")
@@ -241,20 +268,48 @@ struct ContentView: View {
         .frame(maxWidth: .infinity, maxHeight: .infinity)
     }
 
+    private var pagedItems: [MediaItem] {
+        Array(viewModel.displayedItems.prefix(loadedItemLimit))
+    }
+
+    private var loadingOverlay: some View {
+        ZStack {
+            Color.black.opacity(0.22)
+                .ignoresSafeArea()
+
+            VStack(spacing: 12) {
+                ProgressView()
+                    .controlSize(.large)
+                Text("Loading media...")
+                    .font(.headline)
+                    .foregroundStyle(.primary)
+            }
+            .padding(.horizontal, 20)
+            .padding(.vertical, 16)
+            .background(.ultraThinMaterial)
+            .clipShape(RoundedRectangle(cornerRadius: 12))
+        }
+        .transition(.opacity)
+    }
+
     private var gridView: some View {
         let columns = [GridItem(.adaptive(minimum: 150), spacing: 12)]
 
         return ScrollView {
             LazyVGrid(columns: columns, spacing: 12) {
-                ForEach(viewModel.displayedItems) { item in
+                ForEach(pagedItems) { item in
                     MediaGridCell(
                         item: item,
                         thumbnailProvider: thumbnailProvider,
                         isFavorite: showFavoriteStar && viewModel.isFavorite(item),
-                        thumbnailQuality: thumbnailQuality
+                        thumbnailQuality: thumbnailQuality,
+                        isSelected: selectedMediaIDs.contains(item.id)
                     )
                         .onTapGesture {
-                            selectedItem = item
+                            handlePrimaryTap(on: item)
+                        }
+                        .onAppear {
+                            loadMoreIfNeeded(currentItem: item)
                         }
                         .contextMenu {
                             mediaContextMenu(for: item)
@@ -267,17 +322,21 @@ struct ContentView: View {
 
     private var listView: some View {
         List {
-            ForEach(viewModel.displayedItems) { item in
+            ForEach(pagedItems) { item in
                 MediaListRow(
                     item: item,
                     thumbnailProvider: thumbnailProvider,
                     isFavorite: showFavoriteStar && viewModel.isFavorite(item),
                     thumbnailQuality: thumbnailQuality,
-                    dateFormatRaw: dateFormatRaw
+                    dateFormatRaw: dateFormatRaw,
+                    isSelected: selectedMediaIDs.contains(item.id)
                 )
                     .contentShape(Rectangle())
                     .onTapGesture {
-                        selectedItem = item
+                        handlePrimaryTap(on: item)
+                    }
+                    .onAppear {
+                        loadMoreIfNeeded(currentItem: item)
                     }
                     .contextMenu {
                         mediaContextMenu(for: item)
@@ -291,6 +350,10 @@ struct ContentView: View {
     private func mediaContextMenu(for item: MediaItem) -> some View {
         Button(viewModel.isFavorite(item) ? "Remove Favorite" : "Add to Favorites") {
             toggleFavoriteWithOptionalConfirm(item)
+        }
+
+        Button(selectedMediaIDs.contains(item.id) ? "Deselect" : "Select") {
+            toggleSelection(item)
         }
 
         Menu("Add to Album") {
@@ -460,6 +523,151 @@ struct ContentView: View {
         }
         viewModel.toggleFavorite(item)
     }
+
+    private func toggleMultiSelect() {
+        isMultiSelectEnabled.toggle()
+        if isMultiSelectEnabled {
+            selectedItem = nil
+        } else {
+            selectedMediaIDs.removeAll()
+        }
+    }
+
+    private func handlePrimaryTap(on item: MediaItem) {
+        if isMultiSelectEnabled {
+            toggleSelection(item)
+        } else {
+            selectedItem = item
+        }
+    }
+
+    private func toggleSelection(_ item: MediaItem) {
+        if selectedMediaIDs.contains(item.id) {
+            selectedMediaIDs.remove(item.id)
+        } else {
+            selectedMediaIDs.insert(item.id)
+        }
+    }
+
+    private func resetLoadedItemLimit() {
+        loadedItemLimit = min(100, viewModel.displayedItems.count)
+    }
+
+    private func loadMoreIfNeeded(currentItem item: MediaItem) {
+        guard let index = pagedItems.firstIndex(where: { $0.id == item.id }) else { return }
+        let thresholdIndex = max(0, pagedItems.count - 8)
+        guard index >= thresholdIndex else { return }
+        guard loadedItemLimit < viewModel.displayedItems.count else { return }
+
+        loadedItemLimit = min(loadedItemLimit + 100, viewModel.displayedItems.count)
+    }
+
+    private func generateGridImageFromSelection() {
+        let selectedItems = viewModel.displayedItems.filter { selectedMediaIDs.contains($0.id) }
+        let images: [(item: MediaItem, image: NSImage)] = selectedItems.compactMap { item in
+            guard item.type == .image, let image = NSImage(contentsOf: item.url) else { return nil }
+            return (item, image)
+        }
+
+        guard !images.isEmpty else {
+            showInfoAlert(title: "No Photos Selected", message: "Select at least one photo to generate a grid image.")
+            return
+        }
+
+        let count = images.count
+        let columns = min(6, max(2, Int(ceil(sqrt(Double(count))))))
+        let rows = Int(ceil(Double(count) / Double(columns)))
+        let tileSize = CGSize(width: 420, height: 300)
+        let spacing: CGFloat = 18
+        let padding: CGFloat = 28
+        let canvasSize = CGSize(
+            width: (CGFloat(columns) * tileSize.width) + (CGFloat(columns - 1) * spacing) + (padding * 2),
+            height: (CGFloat(rows) * tileSize.height) + (CGFloat(rows - 1) * spacing) + (padding * 2)
+        )
+
+        let output = NSImage(size: canvasSize)
+        output.lockFocus()
+
+        let gradient = NSGradient(colors: [
+            NSColor(calibratedRed: 0.09, green: 0.11, blue: 0.18, alpha: 1),
+            NSColor(calibratedRed: 0.13, green: 0.08, blue: 0.16, alpha: 1)
+        ])
+        gradient?.draw(in: NSRect(origin: .zero, size: canvasSize), angle: 30)
+
+        for (index, entry) in images.enumerated() {
+            let row = index / columns
+            let column = index % columns
+            let origin = CGPoint(
+                x: padding + CGFloat(column) * (tileSize.width + spacing),
+                y: canvasSize.height - padding - tileSize.height - CGFloat(row) * (tileSize.height + spacing)
+            )
+            let tileRect = NSRect(origin: origin, size: tileSize)
+
+            let tilePath = NSBezierPath(roundedRect: tileRect, xRadius: 18, yRadius: 18)
+            NSColor.white.withAlphaComponent(0.16).setStroke()
+            tilePath.lineWidth = 2
+            tilePath.stroke()
+
+            NSColor.black.withAlphaComponent(0.22).setFill()
+            tilePath.fill()
+
+            NSGraphicsContext.saveGraphicsState()
+            tilePath.addClip()
+            drawAspectFit(image: entry.image, in: tileRect)
+            NSGraphicsContext.restoreGraphicsState()
+        }
+
+        output.unlockFocus()
+
+        guard let tiff = output.tiffRepresentation,
+              let rep = NSBitmapImageRep(data: tiff),
+              let pngData = rep.representation(using: .png, properties: [:]) else {
+            showInfoAlert(title: "Export Failed", message: "Could not generate PNG data.")
+            return
+        }
+
+        let panel = NSSavePanel()
+        panel.canCreateDirectories = true
+        panel.nameFieldStringValue = "LumiNest-Grid.png"
+        panel.allowedFileTypes = ["png"]
+        panel.title = "Export Grid Image"
+
+        guard panel.runModal() == .OK, let destinationURL = panel.url else { return }
+
+        do {
+            try pngData.write(to: destinationURL, options: .atomic)
+            NSWorkspace.shared.activateFileViewerSelecting([destinationURL])
+        } catch {
+            showInfoAlert(title: "Export Failed", message: "Could not write the file to disk.")
+        }
+    }
+
+    private func drawAspectFit(image: NSImage, in targetRect: NSRect) {
+        guard image.size.width > 0, image.size.height > 0 else { return }
+
+        let widthRatio = targetRect.width / image.size.width
+        let heightRatio = targetRect.height / image.size.height
+        let scale = min(widthRatio, heightRatio)
+
+        let scaledSize = CGSize(width: image.size.width * scale, height: image.size.height * scale)
+        let drawRect = NSRect(
+            x: targetRect.midX - (scaledSize.width / 2),
+            y: targetRect.midY - (scaledSize.height / 2),
+            width: scaledSize.width,
+            height: scaledSize.height
+        )
+
+        image.draw(in: drawRect, from: .zero, operation: .sourceOver, fraction: 1)
+    }
+
+    private func showInfoAlert(title: String, message: String) {
+        let alert = NSAlert()
+        alert.messageText = title
+        alert.informativeText = message
+        alert.alertStyle = .informational
+        alert.addButton(withTitle: "OK")
+        alert.runModal()
+    }
 }
 
 struct MediaGridCell: View {
@@ -467,6 +675,7 @@ struct MediaGridCell: View {
     @ObservedObject var thumbnailProvider: ThumbnailProvider
     let isFavorite: Bool
     let thumbnailQuality: String
+    let isSelected: Bool
 
     @State private var thumbnail: NSImage?
 
@@ -517,7 +726,7 @@ struct MediaGridCell: View {
         .clipShape(RoundedRectangle(cornerRadius: 10))
         .overlay(
             RoundedRectangle(cornerRadius: 10)
-                .stroke(Color.secondary.opacity(0.2), lineWidth: 1)
+                .stroke(isSelected ? Color.accentColor : Color.secondary.opacity(0.2), lineWidth: isSelected ? 3 : 1)
         )
         .onAppear {
             let quality = ThumbnailQualityOption(rawValue: thumbnailQuality) ?? .medium
@@ -534,6 +743,7 @@ struct MediaListRow: View {
     let isFavorite: Bool
     let thumbnailQuality: String
     let dateFormatRaw: String
+    let isSelected: Bool
 
     @State private var thumbnail: NSImage?
 
@@ -597,6 +807,12 @@ struct MediaListRow: View {
                 thumbnail = image
             }
         }
+        .padding(.vertical, 4)
+        .padding(.horizontal, 6)
+        .background(
+            RoundedRectangle(cornerRadius: 8)
+                .fill(isSelected ? Color.accentColor.opacity(0.14) : .clear)
+        )
     }
 }
 
