@@ -3,10 +3,16 @@ import QuickLookThumbnailing
 
 @MainActor
 final class ThumbnailProvider: ObservableObject {
-    private var cache: [URL: NSImage] = [:]
+    private let cache = NSCache<NSURL, NSImage>()
+
+    init() {
+        applyCacheLimitFromSettings()
+    }
 
     func thumbnail(for url: URL, size: CGFloat, completion: @escaping (NSImage?) -> Void) {
-        if let cached = cache[url] {
+        applyCacheLimitFromSettings()
+
+        if let cached = cache.object(forKey: url as NSURL) {
             completion(cached)
             return
         }
@@ -22,12 +28,22 @@ final class ThumbnailProvider: ObservableObject {
             DispatchQueue.main.async {
                 if let cgImage = representation?.cgImage {
                     let image = NSImage(cgImage: cgImage, size: NSSize(width: size, height: size))
-                    self?.cache[url] = image
+                    self?.cache.setObject(image, forKey: url as NSURL)
                     completion(image)
                 } else {
                     completion(nil)
                 }
             }
         }
+    }
+
+    func clearCache() {
+        cache.removeAllObjects()
+    }
+
+    private func applyCacheLimitFromSettings() {
+        let raw = UserDefaults.standard.string(forKey: SettingsKeys.thumbnailCacheLimit) ?? ThumbnailCacheLimitOption.medium.rawValue
+        let option = ThumbnailCacheLimitOption(rawValue: raw) ?? .medium
+        cache.countLimit = option.countLimit
     }
 }

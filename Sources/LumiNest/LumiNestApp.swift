@@ -29,6 +29,10 @@ struct LumiNestApp: App {
             HelpView()
                 .frame(minWidth: 520, minHeight: 420)
         }
+
+        Settings {
+            SettingsView()
+        }
         .commands {
             LumiNestCommands()
         }

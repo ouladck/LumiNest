@@ -1,4 +1,5 @@
 import AppKit
+import Darwin
 import Foundation
 
 enum MediaFilter: String, CaseIterable, Identifiable {
@@ -29,6 +30,7 @@ final class GalleryViewModel: ObservableObject {
         didSet {
             guard let selectedFolder else {
                 defaults.removeObject(forKey: Self.lastFolderPathKey)
+                stopMonitoringFolder()
                 return
             }
             defaults.set(selectedFolder.path, forKey: Self.lastFolderPathKey)
@@ -135,10 +137,18 @@ final class GalleryViewModel: ObservableObject {
     private let videoExtensions: Set<String> = [
         "mp4", "mov", "m4v", "avi", "mkv", "wmv", "flv", "webm"
     ]
+    private var folderMonitorSource: DispatchSourceFileSystemObject?
+    private var folderMonitorDescriptor: CInt = -1
+    private var pendingMonitorReload: DispatchWorkItem?
+
+    deinit {
+        stopMonitoringFolder()
+    }
 
     init() {
         mediaFilter = MediaFilter(rawValue: defaults.string(forKey: Self.filterKey) ?? "") ?? .all
-        sortMode = SortMode(rawValue: defaults.string(forKey: Self.sortKey) ?? "") ?? .name
+        let fallbackSort = defaults.string(forKey: SettingsKeys.defaultSort) ?? SortMode.name.rawValue
+        sortMode = SortMode(rawValue: defaults.string(forKey: Self.sortKey) ?? fallbackSort) ?? .name
         albumScope = AlbumScope(rawValue: defaults.string(forKey: Self.albumScopeKey) ?? "") ?? .all
         selectedCollectionName = defaults.string(forKey: Self.selectedCollectionKey)
 
@@ -150,7 +160,8 @@ final class GalleryViewModel: ObservableObject {
             self.selectedCollectionName = nil
         }
 
-        if let savedPath = defaults.string(forKey: Self.lastFolderPathKey) {
+        let shouldOpenLastFolder = defaults.object(forKey: SettingsKeys.openLastFolderOnLaunch) as? Bool ?? true
+        if shouldOpenLastFolder, let savedPath = defaults.string(forKey: Self.lastFolderPathKey) {
             let savedURL = URL(fileURLWithPath: savedPath)
             var isDirectory: ObjCBool = false
             if FileManager.default.fileExists(atPath: savedPath, isDirectory: &isDirectory), isDirectory.boolValue {
@@ -172,10 +183,16 @@ final class GalleryViewModel: ObservableObject {
         }
     }
 
-    func loadMedia(from folder: URL) {
+    func loadMedia(from folder: URL, restartMonitor: Bool = true) {
         selectedFolder = folder
+        if restartMonitor {
+            startMonitoringFolder(folder)
+        }
 
-        DispatchQueue.global(qos: .userInitiated).async {
+        let priorityRaw = defaults.string(forKey: SettingsKeys.scanPriority) ?? ScanPriorityOption.fast.rawValue
+        let priority = ScanPriorityOption(rawValue: priorityRaw) ?? .fast
+
+        DispatchQueue.global(qos: priority.qos).async {
             let items = self.scanFolder(folder)
             DispatchQueue.main.async {
                 self.mediaItems = items
@@ -212,6 +229,10 @@ final class GalleryViewModel: ObservableObject {
         guard !name.isEmpty else { return }
 
         albumStore.createAlbum(name: name)
+        let autoSelect = defaults.object(forKey: SettingsKeys.autoSelectCreatedAlbum) as? Bool ?? true
+        if autoSelect {
+            selectedCollectionName = name
+        }
         reloadAlbumStateFromStore()
     }
 
@@ -343,5 +364,53 @@ final class GalleryViewModel: ObservableObject {
                 || path.localizedCaseInsensitiveContains(query)
                 || ext.localizedCaseInsensitiveContains(query)
         }
+    }
+
+    private func startMonitoringFolder(_ folder: URL) {
+        stopMonitoringFolder()
+
+        let descriptor = open(folder.path, O_EVTONLY)
+        guard descriptor >= 0 else { return }
+
+        folderMonitorDescriptor = descriptor
+        let source = DispatchSource.makeFileSystemObjectSource(
+            fileDescriptor: descriptor,
+            eventMask: [.write, .delete, .rename, .attrib, .extend],
+            queue: DispatchQueue.global(qos: .utility)
+        )
+
+        source.setEventHandler { [weak self] in
+            self?.scheduleReloadFromFolderMonitor()
+        }
+
+        source.setCancelHandler { [weak self] in
+            guard let self else { return }
+            if self.folderMonitorDescriptor >= 0 {
+                close(self.folderMonitorDescriptor)
+                self.folderMonitorDescriptor = -1
+            }
+        }
+
+        folderMonitorSource = source
+        source.resume()
+    }
+
+    private func stopMonitoringFolder() {
+        pendingMonitorReload?.cancel()
+        pendingMonitorReload = nil
+        folderMonitorSource?.cancel()
+        folderMonitorSource = nil
+    }
+
+    private func scheduleReloadFromFolderMonitor() {
+        pendingMonitorReload?.cancel()
+
+        let work = DispatchWorkItem { [weak self] in
+            guard let self, let folder = self.selectedFolder else { return }
+            self.loadMedia(from: folder, restartMonitor: false)
+        }
+        pendingMonitorReload = work
+
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.5, execute: work)
     }
 }

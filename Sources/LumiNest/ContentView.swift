@@ -14,9 +14,20 @@ struct ContentView: View {
     @StateObject private var thumbnailProvider = ThumbnailProvider()
 
     @AppStorage("gallery.layout") private var layoutModeRaw = LayoutMode.grid.rawValue
+    @AppStorage(SettingsKeys.defaultLayout) private var defaultLayoutRaw = LayoutMode.grid.rawValue
+    @AppStorage(SettingsKeys.showFullPath) private var showFullPath = true
+    @AppStorage(SettingsKeys.copyPathFormat) private var copyPathFormat = CopyPathFormatOption.absolute.rawValue
+    @AppStorage(SettingsKeys.confirmMoveToTrash) private var confirmMoveToTrash = true
+    @AppStorage(SettingsKeys.confirmFavoriteRemoval) private var confirmFavoriteRemoval = false
+    @AppStorage(SettingsKeys.confirmAlbumDelete) private var confirmAlbumDelete = true
+    @AppStorage(SettingsKeys.showFavoriteStar) private var showFavoriteStar = true
+    @AppStorage(SettingsKeys.thumbnailQuality) private var thumbnailQuality = ThumbnailQualityOption.medium.rawValue
+    @AppStorage(SettingsKeys.dateFormat) private var dateFormatRaw = DateFormatOption.system.rawValue
+
     @State private var selectedItem: MediaItem?
     @State private var isViewerMediaFullscreen = false
     @FocusState private var isSearchFocused: Bool
+    @State private var didApplyDefaultLayout = false
 
     var body: some View {
         ZStack {
@@ -45,7 +56,7 @@ struct ContentView: View {
                         mediaItems: viewModel.displayedItems,
                         initialItem: media,
                         isFavorite: { viewModel.isFavorite($0) },
-                        onToggleFavorite: { viewModel.toggleFavorite($0) },
+                        onToggleFavorite: { toggleFavoriteWithOptionalConfirm($0) },
                         isExternalFullscreen: $isViewerMediaFullscreen,
                         onClose: { selectedItem = nil }
                     )
@@ -62,6 +73,12 @@ struct ContentView: View {
                     isViewerMediaFullscreen = false
                 }
             }
+        }
+        .onAppear {
+            applyDefaultLayoutIfNeeded()
+        }
+        .onReceive(NotificationCenter.default.publisher(for: .luminestClearCaches)) { _ in
+            thumbnailProvider.clearCache()
         }
     }
 
@@ -83,7 +100,7 @@ struct ContentView: View {
             .controlSize(.large)
             .keyboardShortcut("o", modifiers: [.command])
 
-            if let folder = viewModel.selectedFolder {
+            if showFullPath, let folder = viewModel.selectedFolder {
                 Text(folder.path)
                     .font(.caption)
                     .foregroundStyle(.secondary)
@@ -145,6 +162,17 @@ struct ContentView: View {
                     }
                     Button("Delete \"\(selected)\"") {
                         confirmDeleteSelectedAlbum()
+                    }
+                }
+
+                if !viewModel.sortedCollectionNames.isEmpty {
+                    Divider()
+                    Menu("Delete Album") {
+                        ForEach(viewModel.sortedCollectionNames, id: \.self) { name in
+                            Button(name) {
+                                confirmDeleteAlbum(named: name)
+                            }
+                        }
                     }
                 }
             } label: {
@@ -212,7 +240,8 @@ struct ContentView: View {
                     MediaGridCell(
                         item: item,
                         thumbnailProvider: thumbnailProvider,
-                        isFavorite: viewModel.isFavorite(item)
+                        isFavorite: showFavoriteStar && viewModel.isFavorite(item),
+                        thumbnailQuality: thumbnailQuality
                     )
                         .onTapGesture {
                             selectedItem = item
@@ -232,7 +261,9 @@ struct ContentView: View {
                 MediaListRow(
                     item: item,
                     thumbnailProvider: thumbnailProvider,
-                    isFavorite: viewModel.isFavorite(item)
+                    isFavorite: showFavoriteStar && viewModel.isFavorite(item),
+                    thumbnailQuality: thumbnailQuality,
+                    dateFormatRaw: dateFormatRaw
                 )
                     .contentShape(Rectangle())
                     .onTapGesture {
@@ -249,7 +280,7 @@ struct ContentView: View {
     @ViewBuilder
     private func mediaContextMenu(for item: MediaItem) -> some View {
         Button(viewModel.isFavorite(item) ? "Remove Favorite" : "Add to Favorites") {
-            viewModel.toggleFavorite(item)
+            toggleFavoriteWithOptionalConfirm(item)
         }
 
         Menu("Add to Album") {
@@ -290,12 +321,22 @@ struct ContentView: View {
 
         Button("Copy Path") {
             NSPasteboard.general.clearContents()
-            NSPasteboard.general.setString(item.url.path, forType: .string)
+            NSPasteboard.general.setString(copiedPath(for: item), forType: .string)
         }
 
         Divider()
 
         Button("Move to Trash") {
+            if confirmMoveToTrash {
+                let alert = NSAlert()
+                alert.messageText = "Move to Trash"
+                alert.informativeText = "Move this media to Trash?"
+                alert.alertStyle = .warning
+                alert.addButton(withTitle: "Move")
+                alert.addButton(withTitle: "Cancel")
+                guard alert.runModal() == .alertFirstButtonReturn else { return }
+            }
+
             if selectedItem?.id == item.id {
                 selectedItem = nil
             }
@@ -351,10 +392,21 @@ struct ContentView: View {
 
     private func confirmDeleteSelectedAlbum() {
         guard let selected = viewModel.selectedCollectionName else { return }
+        confirmDeleteAlbum(named: selected)
+    }
+
+    private func confirmDeleteAlbum(named name: String) {
+        let trimmed = name.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmed.isEmpty else { return }
+
+        if !confirmAlbumDelete {
+            viewModel.deleteCollection(named: trimmed)
+            return
+        }
 
         let alert = NSAlert()
         alert.messageText = "Delete Album"
-        alert.informativeText = "Delete \"\(selected)\"? Media files will not be deleted."
+        alert.informativeText = "Delete \"\(trimmed)\"? Media files will not be deleted."
         alert.alertStyle = .warning
         alert.addButton(withTitle: "Delete")
         alert.addButton(withTitle: "Cancel")
@@ -362,7 +414,41 @@ struct ContentView: View {
         let response = alert.runModal()
         guard response == .alertFirstButtonReturn else { return }
 
-        viewModel.deleteCollection(named: selected)
+        viewModel.deleteCollection(named: trimmed)
+    }
+
+    private func copiedPath(for item: MediaItem) -> String {
+        let format = CopyPathFormatOption(rawValue: copyPathFormat) ?? .absolute
+        guard format == .relative, let folder = viewModel.selectedFolder else {
+            return item.url.path
+        }
+
+        let base = folder.standardizedFileURL.path
+        let full = item.url.standardizedFileURL.path
+        guard full.hasPrefix(base + "/") else { return full }
+        return String(full.dropFirst(base.count + 1))
+    }
+
+    private func applyDefaultLayoutIfNeeded() {
+        guard !didApplyDefaultLayout else { return }
+        didApplyDefaultLayout = true
+
+        if UserDefaults.standard.object(forKey: "gallery.layout") == nil {
+            layoutModeRaw = defaultLayoutRaw
+        }
+    }
+
+    private func toggleFavoriteWithOptionalConfirm(_ item: MediaItem) {
+        if viewModel.isFavorite(item) && confirmFavoriteRemoval {
+            let alert = NSAlert()
+            alert.messageText = "Remove Favorite"
+            alert.informativeText = "Remove this media from favorites?"
+            alert.alertStyle = .warning
+            alert.addButton(withTitle: "Remove")
+            alert.addButton(withTitle: "Cancel")
+            guard alert.runModal() == .alertFirstButtonReturn else { return }
+        }
+        viewModel.toggleFavorite(item)
     }
 }
 
@@ -370,6 +456,7 @@ struct MediaGridCell: View {
     let item: MediaItem
     @ObservedObject var thumbnailProvider: ThumbnailProvider
     let isFavorite: Bool
+    let thumbnailQuality: String
 
     @State private var thumbnail: NSImage?
 
@@ -423,7 +510,8 @@ struct MediaGridCell: View {
                 .stroke(Color.secondary.opacity(0.2), lineWidth: 1)
         )
         .onAppear {
-            thumbnailProvider.thumbnail(for: item.url, size: 300) { image in
+            let quality = ThumbnailQualityOption(rawValue: thumbnailQuality) ?? .medium
+            thumbnailProvider.thumbnail(for: item.url, size: quality.pixelSize) { image in
                 thumbnail = image
             }
         }
@@ -434,6 +522,8 @@ struct MediaListRow: View {
     let item: MediaItem
     @ObservedObject var thumbnailProvider: ThumbnailProvider
     let isFavorite: Bool
+    let thumbnailQuality: String
+    let dateFormatRaw: String
 
     @State private var thumbnail: NSImage?
 
@@ -443,7 +533,20 @@ struct MediaListRow: View {
 
     private var formattedDate: String {
         guard let createdAt = item.createdAt else { return "Unknown date" }
-        return createdAt.formatted(date: .abbreviated, time: .omitted)
+        let option = DateFormatOption(rawValue: dateFormatRaw) ?? .system
+        let formatter = DateFormatter()
+        switch option {
+        case .system:
+            formatter.dateStyle = .medium
+            formatter.timeStyle = .none
+        case .us:
+            formatter.dateFormat = "MM/dd/yyyy"
+        case .eu:
+            formatter.dateFormat = "dd/MM/yyyy"
+        case .iso:
+            formatter.dateFormat = "yyyy-MM-dd"
+        }
+        return formatter.string(from: createdAt)
     }
 
     var body: some View {
@@ -479,7 +582,8 @@ struct MediaListRow: View {
             Spacer()
         }
         .onAppear {
-            thumbnailProvider.thumbnail(for: item.url, size: 160) { image in
+            let quality = ThumbnailQualityOption(rawValue: thumbnailQuality) ?? .medium
+            thumbnailProvider.thumbnail(for: item.url, size: max(120, quality.pixelSize * 0.65)) { image in
                 thumbnail = image
             }
         }
@@ -494,6 +598,11 @@ struct MediaViewer: View {
     @Binding var isExternalFullscreen: Bool
     let onClose: () -> Void
 
+    @AppStorage(SettingsKeys.viewerAutoplay) private var viewerAutoplay = true
+    @AppStorage(SettingsKeys.viewerLoopVideo) private var viewerLoopVideo = false
+    @AppStorage(SettingsKeys.viewerSwipeSensitivity) private var swipeSensitivity: Double = 40
+    @AppStorage(SettingsKeys.preloadNeighbors) private var preloadNeighbors = true
+
     @State private var currentIndex: Int = 0
     @State private var player: AVPlayer?
     @State private var image: NSImage?
@@ -503,11 +612,17 @@ struct MediaViewer: View {
     @State private var isDetailsExpanded = false
     @State private var isMediaOnlyFullscreen = false
     @State private var keyMonitor: Any?
+    @State private var playerEndObserver: NSObjectProtocol?
 
     var body: some View {
         VStack(spacing: 12) {
             HStack {
                 Text(currentItem.filename)
+                    .font(.system(size: 15, weight: .semibold))
+                    .padding(.horizontal, 12)
+                    .frame(height: 34)
+                    .background(.thinMaterial)
+                    .clipShape(Capsule())
                     .lineLimit(1)
 
                 Spacer()
@@ -518,7 +633,23 @@ struct MediaViewer: View {
                     Image(systemName: isFavorite(currentItem) ? "star.fill" : "star")
                 }
                 .buttonStyle(.plain)
-                .foregroundStyle(isFavorite(currentItem) ? .yellow : .secondary)
+                .font(.system(size: 18, weight: .semibold))
+                .foregroundStyle(isFavorite(currentItem) ? .yellow : .primary)
+                .frame(width: 34, height: 34)
+                .background(.thinMaterial)
+                .clipShape(Circle())
+
+                Button {
+                    isDetailsExpanded.toggle()
+                } label: {
+                    Image(systemName: "info.circle")
+                }
+                .buttonStyle(.plain)
+                .font(.system(size: 18, weight: .semibold))
+                .foregroundStyle(isDetailsExpanded ? .primary : .secondary)
+                .frame(width: 34, height: 34)
+                .background(.thinMaterial)
+                .clipShape(Circle())
 
                 Button {
                     isMediaOnlyFullscreen.toggle()
@@ -527,10 +658,19 @@ struct MediaViewer: View {
                     Image(systemName: isMediaOnlyFullscreen ? "arrow.down.right.and.arrow.up.left" : "arrow.up.left.and.arrow.down.right")
                 }
                 .buttonStyle(.plain)
+                .font(.system(size: 18, weight: .semibold))
                 .foregroundStyle(.secondary)
+                .frame(width: 34, height: 34)
+                .background(.thinMaterial)
+                .clipShape(Circle())
 
-                Text("\(currentIndex + 1) / \(mediaItems.count)")
-                    .foregroundStyle(.secondary)
+                Text("Number \(currentIndex + 1) / \(mediaItems.count)")
+                    .font(.system(size: 15, weight: .semibold))
+                    .foregroundStyle(.primary)
+                    .frame(height: 34)
+                    .padding(.horizontal, 12)
+                    .background(.thinMaterial)
+                    .clipShape(Capsule())
             }
 
             if isMediaOnlyFullscreen {
@@ -563,7 +703,9 @@ struct MediaViewer: View {
                     }
                 }
 
-                metadataPanel
+                if isDetailsExpanded {
+                    metadataPanel
+                }
             }
         }
         .padding(isMediaOnlyFullscreen ? 0 : 18)
@@ -579,12 +721,14 @@ struct MediaViewer: View {
             if let index = mediaItems.firstIndex(of: initialItem) {
                 currentIndex = index
             }
+            isDetailsExpanded = false
             prepareCurrentItem()
             installKeyMonitor()
         }
         .onDisappear {
             player?.pause()
             removeKeyMonitor()
+            removePlayerEndObserver()
             isExternalFullscreen = false
         }
         .onChange(of: currentIndex) { _ in
@@ -640,10 +784,14 @@ struct MediaViewer: View {
             image = nil
             isLoadingImage = false
             player = AVPlayer(url: currentItem.url)
-            player?.play()
+            configurePlayerEndObserver()
+            if viewerAutoplay {
+                player?.play()
+            }
         } else {
             player?.pause()
             player = nil
+            removePlayerEndObserver()
             isLoadingImage = true
             let requestedURL = currentItem.url
 
@@ -660,41 +808,28 @@ struct MediaViewer: View {
     @ViewBuilder
     private var metadataPanel: some View {
         VStack(alignment: .leading, spacing: 8) {
-            Button {
-                isDetailsExpanded.toggle()
-            } label: {
-                Text("Details")
-                    .font(.headline)
-                    .foregroundStyle(.primary)
-            }
-            .buttonStyle(.plain)
-
-            if isDetailsExpanded {
-                VStack(alignment: .leading, spacing: 8) {
-                    if isLoadingMetadata {
-                        ProgressView()
-                            .progressViewStyle(.circular)
-                    } else if let metadata {
-                        ScrollView {
-                            VStack(alignment: .leading, spacing: 6) {
-                                ForEach(metadata.entries) { entry in
-                                    HStack(alignment: .top, spacing: 8) {
-                                        Text(entry.label)
-                                            .foregroundStyle(.secondary)
-                                            .frame(width: 88, alignment: .leading)
-                                        Text(entry.value)
-                                            .textSelection(.enabled)
-                                            .frame(maxWidth: .infinity, alignment: .leading)
-                                    }
-                                }
+            if isLoadingMetadata {
+                ProgressView()
+                    .progressViewStyle(.circular)
+            } else if let metadata {
+                ScrollView {
+                    VStack(alignment: .leading, spacing: 6) {
+                        ForEach(metadata.entries) { entry in
+                            HStack(alignment: .top, spacing: 8) {
+                                Text(entry.label)
+                                    .foregroundStyle(.secondary)
+                                    .frame(width: 88, alignment: .leading)
+                                Text(entry.value)
+                                    .textSelection(.enabled)
+                                    .frame(maxWidth: .infinity, alignment: .leading)
                             }
                         }
-                        .frame(maxHeight: 150)
-                    } else {
-                        Text("No metadata available")
-                            .foregroundStyle(.secondary)
                     }
                 }
+                .frame(maxHeight: 150)
+            } else {
+                Text("No metadata available")
+                    .foregroundStyle(.secondary)
             }
         }
         .frame(maxWidth: .infinity, alignment: .leading)
@@ -719,6 +854,8 @@ struct MediaViewer: View {
     }
 
     private func prefetchNeighbors() {
+        guard preloadNeighbors else { return }
+
         let neighbors = [currentIndex - 1, currentIndex + 1]
             .filter { mediaItems.indices.contains($0) }
             .map { mediaItems[$0] }
@@ -756,9 +893,10 @@ struct MediaViewer: View {
         .gesture(
             DragGesture(minimumDistance: 25)
                 .onEnded { value in
-                    if value.translation.width < -40 {
+                    let threshold = -abs(swipeSensitivity)
+                    if value.translation.width < threshold {
                         next()
-                    } else if value.translation.width > 40 {
+                    } else if value.translation.width > abs(swipeSensitivity) {
                         previous()
                     }
                 }
@@ -782,6 +920,27 @@ struct MediaViewer: View {
         guard currentItem.type == .video, let player else { return }
         player.seek(to: .zero)
         player.play()
+    }
+
+    private func configurePlayerEndObserver() {
+        removePlayerEndObserver()
+        guard viewerLoopVideo, let item = player?.currentItem else { return }
+
+        playerEndObserver = NotificationCenter.default.addObserver(
+            forName: .AVPlayerItemDidPlayToEndTime,
+            object: item,
+            queue: .main
+        ) { _ in
+            player?.seek(to: .zero)
+            player?.play()
+        }
+    }
+
+    private func removePlayerEndObserver() {
+        if let playerEndObserver {
+            NotificationCenter.default.removeObserver(playerEndObserver)
+            self.playerEndObserver = nil
+        }
     }
 
     private func installKeyMonitor() {

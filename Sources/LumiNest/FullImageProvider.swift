@@ -8,10 +8,12 @@ final class FullImageProvider {
     private let queue = DispatchQueue(label: "luminest.fullimage", qos: .userInitiated)
 
     private init() {
-        cache.countLimit = 120
+        applyCacheLimitFromSettings()
     }
 
     func load(url: URL, completion: @escaping (NSImage?) -> Void) {
+        applyCacheLimitFromSettings()
+
         if let cached = cache.object(forKey: url as NSURL) {
             completion(cached)
             return
@@ -30,6 +32,8 @@ final class FullImageProvider {
     }
 
     func prefetch(url: URL) {
+        applyCacheLimitFromSettings()
+
         if cache.object(forKey: url as NSURL) != nil {
             return
         }
@@ -38,5 +42,15 @@ final class FullImageProvider {
             guard let loaded = NSImage(contentsOf: url) else { return }
             self?.cache.setObject(loaded, forKey: url as NSURL)
         }
+    }
+
+    func clearCache() {
+        cache.removeAllObjects()
+    }
+
+    private func applyCacheLimitFromSettings() {
+        let raw = UserDefaults.standard.string(forKey: SettingsKeys.thumbnailCacheLimit) ?? ThumbnailCacheLimitOption.medium.rawValue
+        let option = ThumbnailCacheLimitOption(rawValue: raw) ?? .medium
+        cache.countLimit = option.countLimit
     }
 }

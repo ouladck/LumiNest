@@ -12,7 +12,9 @@ struct HelpView: View {
                     lines: [
                         "1. Click Select Folder (or press Cmd+O).",
                         "2. Choose a folder containing photos/videos.",
-                        "3. Click any media item to open preview."
+                        "3. Click any media item to open preview.",
+                        "4. Open Settings with Cmd+, to configure defaults and behavior.",
+                        "5. LumiNest auto-refreshes when files are added/removed in the selected folder."
                     ]
                 )
 
@@ -25,7 +27,7 @@ struct HelpView: View {
                         "R: replay current video",
                         "Esc: close preview",
                         "Use the fullscreen button in viewer header for media-only full-screen mode",
-                        "Details is collapsible: click the Details line to expand/collapse metadata",
+                        "Use the info icon (next to star) to show/hide metadata details",
                         "Click outside the preview: close preview"
                     ]
                 )
@@ -49,8 +51,20 @@ struct HelpView: View {
                         "To show only favorites: set Album picker to Favorites.",
                         "To create an album: right-click media and choose New Album....",
                         "To add media into an existing album: right-click media -> Add to Album.",
-                        "Use the folder-gear button next to Album picker to rename or delete the selected album.",
+                        "Use the folder-gear button next to Album picker to rename or delete albums.",
                         "While viewing a selected album, right-click media -> Remove from \"Album\" to unassign it."
+                    ]
+                )
+
+                helpSection(
+                    title: "Settings Center",
+                    lines: [
+                        "Open with Cmd+,",
+                        "General: default layout/sort, last folder behavior, date format",
+                        "Viewer: autoplay, loop video, swipe sensitivity",
+                        "Performance: thumbnail quality, cache limits, preload neighbors",
+                        "Albums & Privacy: confirmations, favorites and path preferences",
+                        "Diagnostics: clear caches and export diagnostics report"
                     ]
                 )
             }
