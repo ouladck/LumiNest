@@ -5,6 +5,7 @@ enum SettingsKeys {
     static let defaultLayout = "settings.defaultLayout"
     static let defaultSort = "settings.defaultSort"
     static let openLastFolderOnLaunch = "settings.openLastFolderOnLaunch"
+    static let defaultMediaRootPath = "settings.defaultMediaRootPath"
     static let uiLanguage = "settings.uiLanguage"
     static let dateFormat = "settings.dateFormat"
 

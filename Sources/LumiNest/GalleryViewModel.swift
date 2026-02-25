@@ -82,6 +82,8 @@ final class GalleryViewModel: ObservableObject {
     @Published private(set) var mediaItems: [MediaItem] = []
     @Published private(set) var displayedItems: [MediaItem] = []
     @Published private(set) var isLoadingMedia = false
+    @Published private(set) var defaultRootFolder: URL?
+    @Published private(set) var rootChildFolders: [URL] = []
 
     var sortedCollectionNames: [String] {
         collections.keys.sorted { $0.localizedCaseInsensitiveCompare($1) == .orderedAscending }
@@ -126,6 +128,14 @@ final class GalleryViewModel: ObservableObject {
         migrateLegacyDefaultsIfNeeded()
         reloadAlbumStateFromStore()
 
+        let fallbackRoot = FileManager.default.homeDirectoryForCurrentUser.appendingPathComponent("Pictures", isDirectory: true)
+        let configuredRootPath = defaults.string(forKey: SettingsKeys.defaultMediaRootPath) ?? fallbackRoot.path
+        if defaults.string(forKey: SettingsKeys.defaultMediaRootPath) == nil {
+            defaults.set(configuredRootPath, forKey: SettingsKeys.defaultMediaRootPath)
+        }
+        let configuredRootURL = URL(fileURLWithPath: configuredRootPath)
+        setDefaultRootFolder(configuredRootURL, persist: false)
+
         if let selectedCollectionName,
            collections[selectedCollectionName] == nil {
             self.selectedCollectionName = nil
@@ -139,6 +149,8 @@ final class GalleryViewModel: ObservableObject {
                 selectedFolder = savedURL
                 loadMedia(from: savedURL)
             }
+        } else if let defaultRootFolder {
+            loadMedia(from: defaultRootFolder)
         }
 
         refreshDisplayedItems()
@@ -153,6 +165,36 @@ final class GalleryViewModel: ObservableObject {
 
         if panel.runModal() == .OK, let folder = panel.url {
             loadMedia(from: folder)
+        }
+    }
+
+    func chooseDefaultRootFolder() {
+        let panel = NSOpenPanel()
+        panel.canChooseFiles = false
+        panel.canChooseDirectories = true
+        panel.allowsMultipleSelection = false
+        panel.prompt = "Choose Default Root"
+        panel.message = "Pick a default root path that contains your photo/video folders."
+        panel.directoryURL = defaultRootFolder
+
+        if panel.runModal() == .OK, let folder = panel.url {
+            setDefaultRootFolder(folder, persist: true)
+            loadMedia(from: folder)
+        }
+    }
+
+    func loadRootChildFolder(_ folder: URL) {
+        loadMedia(from: folder)
+    }
+
+    func syncDefaultRootFromSettings(loadIfNeeded: Bool = false) {
+        let fallbackRoot = FileManager.default.homeDirectoryForCurrentUser.appendingPathComponent("Pictures", isDirectory: true)
+        let configuredRootPath = defaults.string(forKey: SettingsKeys.defaultMediaRootPath) ?? fallbackRoot.path
+        let configuredRootURL = URL(fileURLWithPath: configuredRootPath)
+        setDefaultRootFolder(configuredRootURL, persist: false)
+
+        if loadIfNeeded, selectedFolder == nil {
+            loadMedia(from: configuredRootURL)
         }
     }
 
@@ -261,6 +303,14 @@ final class GalleryViewModel: ObservableObject {
         refreshDisplayedItems()
     }
 
+    private func setDefaultRootFolder(_ url: URL, persist: Bool) {
+        defaultRootFolder = url
+        if persist {
+            defaults.set(url.path, forKey: SettingsKeys.defaultMediaRootPath)
+        }
+        rootChildFolders = discoverImmediateDirectories(in: url)
+    }
+
     private func migrateLegacyDefaultsIfNeeded() {
         guard albumStore.isEmpty() else { return }
 
@@ -329,6 +379,24 @@ final class GalleryViewModel: ObservableObject {
         }
 
         return items
+    }
+
+    private func discoverImmediateDirectories(in root: URL) -> [URL] {
+        let keys: [URLResourceKey] = [.isDirectoryKey, .isHiddenKey, .nameKey]
+        guard let urls = try? FileManager.default.contentsOfDirectory(
+            at: root,
+            includingPropertiesForKeys: keys,
+            options: [.skipsHiddenFiles]
+        ) else {
+            return []
+        }
+
+        return urls.compactMap { url in
+            let values = try? url.resourceValues(forKeys: Set(keys))
+            guard values?.isDirectory == true else { return nil }
+            return url
+        }
+        .sorted { $0.lastPathComponent.localizedCaseInsensitiveCompare($1.lastPathComponent) == .orderedAscending }
     }
 
     private func refreshDisplayedItems(debounced: Bool = false) {

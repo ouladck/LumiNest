@@ -10,6 +10,7 @@ struct SettingsView: View {
     @AppStorage(SettingsKeys.defaultLayout) private var defaultLayout = LayoutMode.grid.rawValue
     @AppStorage(SettingsKeys.defaultSort) private var defaultSort = SortMode.name.rawValue
     @AppStorage(SettingsKeys.openLastFolderOnLaunch) private var openLastFolderOnLaunch = true
+    @AppStorage(SettingsKeys.defaultMediaRootPath) private var defaultMediaRootPath = FileManager.default.homeDirectoryForCurrentUser.appendingPathComponent("Pictures", isDirectory: true).path
     @AppStorage(SettingsKeys.uiLanguage) private var uiLanguage = UILanguageOption.system.rawValue
     @AppStorage(SettingsKeys.dateFormat) private var dateFormat = DateFormatOption.system.rawValue
 
@@ -69,6 +70,20 @@ struct SettingsView: View {
             }
 
             Toggle("Open last folder on launch", isOn: $openLastFolderOnLaunch)
+
+            HStack(alignment: .center, spacing: 10) {
+                Text("Default media root")
+                Text(defaultMediaRootPath)
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                    .lineLimit(1)
+
+                Spacer(minLength: 0)
+
+                Button("Choose...") {
+                    chooseDefaultMediaRoot()
+                }
+            }
 
             Picker("UI language", selection: $uiLanguage) {
                 ForEach(UILanguageOption.allCases) { option in
@@ -185,6 +200,7 @@ struct SettingsView: View {
         let defaults = UserDefaults.standard
         let keys = [
             SettingsKeys.defaultLayout, SettingsKeys.defaultSort, SettingsKeys.openLastFolderOnLaunch,
+            SettingsKeys.defaultMediaRootPath,
             SettingsKeys.uiLanguage, SettingsKeys.dateFormat,
             SettingsKeys.viewerAutoplay, SettingsKeys.viewerDetailsExpandedByDefault,
             SettingsKeys.viewerLoopVideo, SettingsKeys.viewerSwipeSensitivity,
@@ -219,6 +235,7 @@ struct SettingsView: View {
         - defaultLayout: \(defaults.string(forKey: SettingsKeys.defaultLayout) ?? "grid")
         - defaultSort: \(defaults.string(forKey: SettingsKeys.defaultSort) ?? "name")
         - openLastFolderOnLaunch: \(defaults.object(forKey: SettingsKeys.openLastFolderOnLaunch) as? Bool ?? true)
+        - defaultMediaRootPath: \(defaults.string(forKey: SettingsKeys.defaultMediaRootPath) ?? "~/Pictures")
         - viewerAutoplay: \(defaults.object(forKey: SettingsKeys.viewerAutoplay) as? Bool ?? true)
         - viewerDetailsExpandedByDefault: \(defaults.object(forKey: SettingsKeys.viewerDetailsExpandedByDefault) as? Bool ?? false)
         - viewerLoopVideo: \(defaults.object(forKey: SettingsKeys.viewerLoopVideo) as? Bool ?? false)
@@ -235,5 +252,18 @@ struct SettingsView: View {
         } catch {
             infoMessage = "Failed to export diagnostics."
         }
+    }
+
+    private func chooseDefaultMediaRoot() {
+        let panel = NSOpenPanel()
+        panel.canChooseFiles = false
+        panel.canChooseDirectories = true
+        panel.allowsMultipleSelection = false
+        panel.prompt = "Choose"
+        panel.title = "Default Media Root"
+        panel.directoryURL = URL(fileURLWithPath: defaultMediaRootPath)
+
+        guard panel.runModal() == .OK, let url = panel.url else { return }
+        defaultMediaRootPath = url.path
     }
 }

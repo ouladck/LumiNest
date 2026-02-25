@@ -23,12 +23,15 @@ struct ContentView: View {
     @AppStorage(SettingsKeys.showFavoriteStar) private var showFavoriteStar = true
     @AppStorage(SettingsKeys.thumbnailQuality) private var thumbnailQuality = ThumbnailQualityOption.medium.rawValue
     @AppStorage(SettingsKeys.dateFormat) private var dateFormatRaw = DateFormatOption.system.rawValue
+    @AppStorage(SettingsKeys.defaultMediaRootPath) private var defaultMediaRootPath = FileManager.default.homeDirectoryForCurrentUser.appendingPathComponent("Pictures", isDirectory: true).path
 
     @State private var selectedItem: MediaItem?
     @State private var isViewerMediaFullscreen = false
     @State private var isMultiSelectEnabled = false
+    @State private var isSearchExpanded = false
     @State private var selectedMediaIDs: Set<URL> = []
     @State private var loadedItemLimit = 100
+    @State private var clickMonitor: Any?
     @FocusState private var isSearchFocused: Bool
     @State private var didApplyDefaultLayout = false
 
@@ -83,6 +86,11 @@ struct ContentView: View {
         }
         .onAppear {
             applyDefaultLayoutIfNeeded()
+            viewModel.syncDefaultRootFromSettings(loadIfNeeded: true)
+            installClickMonitor()
+        }
+        .onDisappear {
+            removeClickMonitor()
         }
         .onReceive(NotificationCenter.default.publisher(for: .luminestClearCaches)) { _ in
             thumbnailProvider.clearCache()
@@ -93,6 +101,16 @@ struct ContentView: View {
         .onChange(of: viewModel.displayedItems.count) { _ in
             resetLoadedItemLimit()
         }
+        .onChange(of: isSearchFocused) { focused in
+            if !focused && isSearchExpanded {
+                withAnimation(.easeInOut(duration: 0.2)) {
+                    isSearchExpanded = false
+                }
+            }
+        }
+        .onChange(of: defaultMediaRootPath) { _ in
+            viewModel.syncDefaultRootFromSettings(loadIfNeeded: true)
+        }
     }
 
     private var layoutMode: LayoutMode {
@@ -100,159 +118,438 @@ struct ContentView: View {
     }
 
     private var header: some View {
-        HStack {
-            Button {
-                viewModel.pickFolder()
-            } label: {
-                Label("Select Folder", systemImage: "folder.fill.badge.plus")
-                    .font(.headline)
-                    .padding(.horizontal, 14)
-                    .padding(.vertical, 8)
-            }
-            .buttonStyle(.borderedProminent)
-            .controlSize(.large)
-            .keyboardShortcut("o", modifiers: [.command])
+        VStack(spacing: 10) {
+            HStack(spacing: 12) {
+                VStack(alignment: .leading, spacing: 2) {
+                    Text("Library")
+                        .font(.title2.weight(.bold))
+                        .foregroundStyle(.white)
 
-            if showFullPath, let folder = viewModel.selectedFolder {
-                Text(folder.path)
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
-                    .lineLimit(1)
-            }
+                    if showFullPath, let folder = viewModel.selectedFolder {
+                        Text(folder.path)
+                            .font(.caption)
+                            .foregroundStyle(Color.white.opacity(0.78))
+                            .lineLimit(1)
+                    }
+                }
 
-            Spacer(minLength: 20)
+                Spacer()
 
-            HStack(spacing: 6) {
-                Image(systemName: "magnifyingglass")
-                    .foregroundStyle(.secondary)
-                TextField("Search media", text: $viewModel.searchQuery)
-                    .textFieldStyle(.plain)
-                    .focused($isSearchFocused)
-                    .frame(width: 220)
+                HStack(spacing: 8) {
+                    if isSearchExpanded {
+                        HStack(spacing: 6) {
+                            Image(systemName: "magnifyingglass")
+                                .foregroundStyle(.secondary)
+                            TextField("Search", text: $viewModel.searchQuery)
+                                .textFieldStyle(.plain)
+                                .focused($isSearchFocused)
+                                .frame(width: 220)
 
-                if !viewModel.searchQuery.isEmpty {
+                            if !viewModel.searchQuery.isEmpty {
+                                Button {
+                                    viewModel.searchQuery = ""
+                                } label: {
+                                    Image(systemName: "xmark.circle.fill")
+                                        .foregroundStyle(.secondary)
+                                }
+                                .buttonStyle(.plain)
+                            }
+                        }
+                        .padding(.horizontal, 10)
+                        .padding(.vertical, 7)
+                        .background(
+                            LinearGradient(
+                                colors: [Color.blue.opacity(0.42), Color.blue.opacity(0.28)],
+                                startPoint: .topLeading,
+                                endPoint: .bottomTrailing
+                            )
+                        )
+                        .overlay(
+                            RoundedRectangle(cornerRadius: 14)
+                                .stroke(Color.white.opacity(0.35), lineWidth: 1)
+                        )
+                        .clipShape(RoundedRectangle(cornerRadius: 14))
+                        .transition(.move(edge: .trailing).combined(with: .opacity))
+                    }
+
                     Button {
-                        viewModel.searchQuery = ""
+                        withAnimation(.easeInOut(duration: 0.2)) {
+                            isSearchExpanded.toggle()
+                        }
+                        if isSearchExpanded {
+                            DispatchQueue.main.asyncAfter(deadline: .now() + 0.08) {
+                                isSearchFocused = true
+                            }
+                        }
                     } label: {
-                        Image(systemName: "xmark.circle.fill")
-                            .foregroundStyle(.secondary)
+                        Image(systemName: "magnifyingglass")
+                            .font(.body.weight(.semibold))
+                            .foregroundStyle(.white)
+                            .frame(width: 34, height: 34)
+                            .background(
+                                LinearGradient(
+                                    colors: [Color.blue.opacity(0.5), Color.blue.opacity(0.32)],
+                                    startPoint: .topLeading,
+                                    endPoint: .bottomTrailing
+                                )
+                            )
+                            .overlay(
+                                RoundedRectangle(cornerRadius: 17)
+                                    .stroke(Color.white.opacity(0.35), lineWidth: 1)
+                            )
+                            .clipShape(Circle())
                     }
                     .buttonStyle(.plain)
+                    .contentShape(Rectangle())
                 }
-            }
-            .padding(.horizontal, 10)
-            .padding(.vertical, 7)
-            .background(Color.secondary.opacity(0.12))
-            .clipShape(RoundedRectangle(cornerRadius: 9))
 
-            Picker("Album", selection: Binding(
-                get: { viewModel.selectedCollectionName ?? viewModel.albumScope.rawValue },
-                set: { newValue in
-                    if let collection = viewModel.sortedCollectionNames.first(where: { $0 == newValue }) {
-                        viewModel.selectedCollectionName = collection
+                let count = viewModel.displayedItems.count
+                Label {
+                    Text("\(count)")
+                        .font(.caption.weight(.semibold))
+                        .foregroundStyle(.white)
+                } icon: {
+                    Image(systemName: "photo.stack.fill")
+                        .font(.caption.weight(.semibold))
+                        .foregroundStyle(.white)
+                }
+                .padding(.horizontal, 10)
+                .frame(height: 34)
+                .background(
+                    LinearGradient(
+                        colors: [Color.blue.opacity(0.5), Color.blue.opacity(0.32)],
+                        startPoint: .topLeading,
+                        endPoint: .bottomTrailing
+                    )
+                )
+                .clipShape(Capsule())
+                .overlay(
+                    Capsule()
+                        .stroke(Color.white.opacity(0.3), lineWidth: 1)
+                )
+            }
+
+            HStack(spacing: 10) {
+                Button {
+                    viewModel.pickFolder()
+                } label: {
+                    Label("Select Folder", systemImage: "folder.fill.badge.plus")
+                        .font(.subheadline.weight(.semibold))
+                        .foregroundStyle(.white)
+                        .padding(.horizontal, 14)
+                        .frame(height: 34)
+                        .background(
+                            LinearGradient(
+                                colors: [Color.blue.opacity(0.6), Color.blue.opacity(0.42)],
+                                startPoint: .topLeading,
+                                endPoint: .bottomTrailing
+                            )
+                        )
+                        .overlay(
+                            Capsule()
+                                .stroke(Color.white.opacity(0.35), lineWidth: 1)
+                        )
+                        .clipShape(Capsule())
+                        .contentShape(Capsule())
+                }
+                .buttonStyle(.plain)
+                .contentShape(Capsule())
+                .keyboardShortcut("o", modifiers: [.command])
+
+                Menu {
+                    if let root = viewModel.defaultRootFolder {
+                        Button("Open Root: \(root.lastPathComponent)") {
+                            viewModel.loadRootChildFolder(root)
+                        }
+                    }
+
+                    if !viewModel.rootChildFolders.isEmpty {
+                        Divider()
+                        ForEach(viewModel.rootChildFolders, id: \.path) { folder in
+                            Button(folder.lastPathComponent) {
+                                viewModel.loadRootChildFolder(folder)
+                            }
+                        }
                     } else {
-                        viewModel.selectedCollectionName = nil
-                        viewModel.albumScope = AlbumScope(rawValue: newValue) ?? .all
+                        Button("No folders in root") {}
+                            .disabled(true)
                     }
-                }
-            )) {
-                Text("All").tag(AlbumScope.all.rawValue)
-                Text("Favorites").tag(AlbumScope.favorites.rawValue)
-                ForEach(viewModel.sortedCollectionNames, id: \.self) { name in
-                    Text(name).tag(name)
-                }
-            }
-            .frame(width: 160)
 
-            Menu {
-                Button("New Album...") {
-                    promptForNewAlbum(prefilledItem: nil)
-                }
-
-                if let selected = viewModel.selectedCollectionName {
-                    Button("Rename \"\(selected)\"...") {
-                        promptRenameSelectedAlbum()
-                    }
-                    Button("Delete \"\(selected)\"") {
-                        confirmDeleteSelectedAlbum()
-                    }
-                }
-
-                if !viewModel.sortedCollectionNames.isEmpty {
                     Divider()
-                    Menu("Delete Album") {
+
+                    Button("Change Root...") {
+                        viewModel.chooseDefaultRootFolder()
+                    }
+                } label: {
+                    Label("Folders", systemImage: "folder")
+                        .font(.subheadline.weight(.semibold))
+                        .foregroundStyle(.white)
+                        .padding(.horizontal, 12)
+                        .frame(height: 34)
+                }
+                .buttonStyle(.plain)
+                .contentShape(Rectangle())
+                .background(
+                    LinearGradient(
+                        colors: [Color.blue.opacity(0.52), Color.blue.opacity(0.30)],
+                        startPoint: .topLeading,
+                        endPoint: .bottomTrailing
+                    )
+                )
+                .clipShape(Capsule())
+                .overlay(
+                    Capsule()
+                        .stroke(Color.white.opacity(0.40), lineWidth: 1)
+                )
+                .shadow(color: Color.blue.opacity(0.22), radius: 7, y: 1)
+
+                Menu {
+                    Button("All") {
+                        viewModel.selectedCollectionName = nil
+                        viewModel.albumScope = .all
+                    }
+                    Button("Favorites") {
+                        viewModel.selectedCollectionName = nil
+                        viewModel.albumScope = .favorites
+                    }
+                    if !viewModel.sortedCollectionNames.isEmpty {
+                        Divider()
                         ForEach(viewModel.sortedCollectionNames, id: \.self) { name in
                             Button(name) {
-                                confirmDeleteAlbum(named: name)
+                                viewModel.selectedCollectionName = name
                             }
                         }
                     }
+                    Divider()
+                    Button("New Album...") {
+                        promptForNewAlbum(prefilledItem: nil)
+                    }
+                    if let selected = viewModel.selectedCollectionName {
+                        Button("Rename \"\(selected)\"...") {
+                            promptRenameSelectedAlbum()
+                        }
+                        Button("Delete \"\(selected)\"") {
+                            confirmDeleteSelectedAlbum()
+                        }
+                    }
+                } label: {
+                    HStack(spacing: 7) {
+                        Image(systemName: "square.stack.3d.up")
+                            .symbolRenderingMode(.monochrome)
+                        Text("Albums")
+                    }
                 }
-            } label: {
-                Image(systemName: "folder.badge.gearshape")
-                    .foregroundStyle(.secondary)
-            }
-            .menuStyle(.borderlessButton)
+                .buttonStyle(.plain)
+                .menuStyle(.borderlessButton)
+                .font(.subheadline.weight(.semibold))
+                .foregroundStyle(Color.white)
+                .tint(.white)
+                .padding(.horizontal, 14)
+                .frame(height: 34)
+                .contentShape(Capsule())
+                .background(
+                    LinearGradient(
+                        colors: [Color.blue.opacity(0.52), Color.blue.opacity(0.30)],
+                        startPoint: .topLeading,
+                        endPoint: .bottomTrailing
+                    )
+                )
+                .clipShape(Capsule())
+                .overlay(
+                    Capsule()
+                        .stroke(Color.white.opacity(0.40), lineWidth: 1)
+                )
+                .shadow(color: Color.blue.opacity(0.22), radius: 7, y: 1)
 
-            Picker("Filter", selection: $viewModel.mediaFilter) {
-                ForEach(MediaFilter.allCases) { filter in
-                    Text(filter.rawValue).tag(filter)
+                Menu {
+                    Button("All") { viewModel.mediaFilter = .all }
+                    Button("Photos") { viewModel.mediaFilter = .photos }
+                    Button("Videos") { viewModel.mediaFilter = .videos }
+                } label: {
+                    HStack(spacing: 7) {
+                        Image(systemName: "line.3.horizontal.decrease.circle")
+                            .symbolRenderingMode(.monochrome)
+                        Text(viewModel.mediaFilter.rawValue)
+                    }
+                }
+                .buttonStyle(.plain)
+                .menuStyle(.borderlessButton)
+                .font(.subheadline.weight(.semibold))
+                .foregroundStyle(Color.white)
+                .tint(.white)
+                .padding(.horizontal, 14)
+                .frame(height: 34)
+                .contentShape(Capsule())
+                .background(
+                    LinearGradient(
+                        colors: [Color.blue.opacity(0.52), Color.blue.opacity(0.30)],
+                        startPoint: .topLeading,
+                        endPoint: .bottomTrailing
+                    )
+                )
+                .overlay(
+                    Capsule()
+                        .stroke(Color.white.opacity(0.40), lineWidth: 1)
+                )
+                .clipShape(Capsule())
+                .shadow(color: Color.blue.opacity(0.22), radius: 7, y: 1)
+
+                Menu {
+                    ForEach(SortMode.allCases) { sort in
+                        Button(sort.rawValue) {
+                            viewModel.sortMode = sort
+                        }
+                    }
+                } label: {
+                    HStack(spacing: 7) {
+                        Image(systemName: "arrow.up.arrow.down")
+                            .symbolRenderingMode(.monochrome)
+                        Text(viewModel.sortMode.rawValue)
+                    }
+                }
+                .buttonStyle(.plain)
+                .menuStyle(.borderlessButton)
+                .font(.subheadline.weight(.semibold))
+                .foregroundStyle(Color.white)
+                .tint(.white)
+                .padding(.horizontal, 14)
+                .frame(height: 34)
+                .contentShape(Capsule())
+                .background(
+                    LinearGradient(
+                        colors: [Color.blue.opacity(0.52), Color.blue.opacity(0.30)],
+                        startPoint: .topLeading,
+                        endPoint: .bottomTrailing
+                    )
+                )
+                .overlay(
+                    Capsule()
+                        .stroke(Color.white.opacity(0.40), lineWidth: 1)
+                )
+                .clipShape(Capsule())
+                .shadow(color: Color.blue.opacity(0.22), radius: 7, y: 1)
+
+                HStack(spacing: 0) {
+                    Button {
+                        layoutModeRaw = LayoutMode.grid.rawValue
+                    } label: {
+                        ZStack {
+                            if layoutMode == .grid {
+                                RoundedRectangle(cornerRadius: 12)
+                                    .fill(
+                                        LinearGradient(
+                                            colors: [Color.blue.opacity(0.7), Color.blue.opacity(0.45)],
+                                            startPoint: .topLeading,
+                                            endPoint: .bottomTrailing
+                                        )
+                                    )
+                            }
+                            Image(systemName: "square.grid.3x3.fill")
+                                .foregroundStyle(layoutMode == .grid ? .white : Color.white.opacity(0.78))
+                        }
+                        .frame(width: 44, height: 34)
+                        .contentShape(Rectangle())
+                    }
+                    .buttonStyle(.plain)
+
+                    Button {
+                        layoutModeRaw = LayoutMode.list.rawValue
+                    } label: {
+                        ZStack {
+                            if layoutMode == .list {
+                                RoundedRectangle(cornerRadius: 12)
+                                    .fill(
+                                        LinearGradient(
+                                            colors: [Color.blue.opacity(0.7), Color.blue.opacity(0.45)],
+                                            startPoint: .topLeading,
+                                            endPoint: .bottomTrailing
+                                        )
+                                    )
+                            }
+                            Image(systemName: "list.bullet")
+                                .foregroundStyle(layoutMode == .list ? .white : Color.white.opacity(0.78))
+                        }
+                        .frame(width: 44, height: 34)
+                        .contentShape(Rectangle())
+                    }
+                    .buttonStyle(.plain)
+                }
+                .background(Color.white.opacity(0.18))
+                .overlay(
+                    RoundedRectangle(cornerRadius: 17)
+                        .stroke(Color.white.opacity(0.28), lineWidth: 1)
+                )
+                .clipShape(RoundedRectangle(cornerRadius: 17))
+
+                Spacer(minLength: 0)
+
+                Button {
+                    toggleMultiSelect()
+                } label: {
+                    Label(isMultiSelectEnabled ? "Selecting" : "Select", systemImage: isMultiSelectEnabled ? "checkmark.circle.fill" : "checkmark.circle")
+                        .font(.caption.weight(.semibold))
+                }
+                .buttonStyle(.bordered)
+
+                if isMultiSelectEnabled {
+                    Text("\(selectedMediaIDs.count) selected")
+                        .font(.caption.weight(.semibold))
+                        .foregroundStyle(.white)
+                        .padding(.horizontal, 10)
+                        .frame(height: 30)
+                        .background(Color.blue.opacity(0.35))
+                        .clipShape(Capsule())
                 }
             }
-            .frame(width: 140)
-
-            Picker("Sort", selection: $viewModel.sortMode) {
-                ForEach(SortMode.allCases) { sort in
-                    Text(sort.rawValue).tag(sort)
-                }
-            }
-            .frame(width: 130)
-
-            Picker("View", selection: Binding(
-                get: { LayoutMode(rawValue: layoutModeRaw) ?? .grid },
-                set: { layoutModeRaw = $0.rawValue }
-            )) {
-                ForEach(LayoutMode.allCases) { mode in
-                    Text(mode.rawValue).tag(mode)
-                }
-            }
-            .pickerStyle(.segmented)
-            .frame(width: 180)
-
-            Button {
-                toggleMultiSelect()
-            } label: {
-                Label("Select", systemImage: isMultiSelectEnabled ? "checkmark.circle.fill" : "checkmark.circle")
-                    .font(.caption.weight(.semibold))
-            }
-            .buttonStyle(.bordered)
-
-            if isMultiSelectEnabled {
-                Text("\(selectedMediaIDs.count) selected")
-                    .font(.caption.weight(.semibold))
-                    .foregroundStyle(.secondary)
-            }
-
-            let count = viewModel.displayedItems.count
-            Label {
-                Text("\(count) \(count == 1 ? "item" : "items")")
-                    .font(.caption.weight(.semibold))
-            } icon: {
-                Image(systemName: "photo.on.rectangle.angled")
-                    .font(.caption.weight(.semibold))
-            }
-            .foregroundStyle(.primary)
-            .padding(.horizontal, 10)
-            .frame(height: 30)
-            .background(.thinMaterial)
-            .clipShape(Capsule())
 
             Button("") {
-                isSearchFocused = true
+                if !isSearchExpanded {
+                    withAnimation(.easeInOut(duration: 0.2)) {
+                        isSearchExpanded = true
+                    }
+                }
+                DispatchQueue.main.asyncAfter(deadline: .now() + 0.08) {
+                    isSearchFocused = true
+                }
             }
             .keyboardShortcut("f", modifiers: [.command])
             .frame(width: 0, height: 0)
             .opacity(0)
+        }
+        .padding(.horizontal, 14)
+        .padding(.vertical, 12)
+        .background(
+            LinearGradient(
+                colors: [Color.black.opacity(0.48), Color.gray.opacity(0.36)],
+                startPoint: .topLeading,
+                endPoint: .bottomTrailing
+            )
+        )
+        .overlay(
+            RoundedRectangle(cornerRadius: 14)
+                .stroke(Color.white.opacity(0.24), lineWidth: 1)
+        )
+        .clipShape(RoundedRectangle(cornerRadius: 14))
+    }
+
+    private func installClickMonitor() {
+        guard clickMonitor == nil else { return }
+        clickMonitor = NSEvent.addLocalMonitorForEvents(matching: [.leftMouseDown, .rightMouseDown]) { event in
+            DispatchQueue.main.async {
+                if isSearchExpanded && !isSearchFocused {
+                    withAnimation(.easeInOut(duration: 0.2)) {
+                        isSearchExpanded = false
+                    }
+                }
+            }
+            return event
+        }
+    }
+
+    private func removeClickMonitor() {
+        if let clickMonitor {
+            NSEvent.removeMonitor(clickMonitor)
+            self.clickMonitor = nil
         }
     }
 
