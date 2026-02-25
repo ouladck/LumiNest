@@ -8,7 +8,7 @@ struct AboutView: View {
             Text("LumiNest")
                 .font(.largeTitle.bold())
 
-            Text("Version 0.3.3")
+            Text("Version 0.3.4")
                 .font(.subheadline.monospacedDigit())
                 .foregroundStyle(.secondary)
 
