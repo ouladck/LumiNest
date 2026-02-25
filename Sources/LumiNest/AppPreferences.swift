@@ -33,8 +33,63 @@ enum UILanguageOption: String, CaseIterable, Identifiable {
     case system = "System"
     case english = "English"
     case french = "French"
+    case spanish = "Spanish"
+    case german = "German"
+    case italian = "Italian"
+    case portugueseBrazil = "Portuguese (Brazil)"
+    case russian = "Russian"
+    case japanese = "Japanese"
+    case chineseSimplified = "Chinese (Simplified)"
+    case arabic = "Arabic"
+    case tamazight = "ⵜⴰⵎⴰⵣⵉⵖⵜ"
 
     var id: String { rawValue }
+
+    var displayName: String {
+        switch self {
+        case .system: return "System"
+        case .english: return "English"
+        case .french: return "Français"
+        case .spanish: return "Español"
+        case .german: return "Deutsch"
+        case .italian: return "Italiano"
+        case .portugueseBrazil: return "Português (Brasil)"
+        case .russian: return "Русский"
+        case .japanese: return "日本語"
+        case .chineseSimplified: return "简体中文"
+        case .arabic: return "العربية"
+        case .tamazight: return "ⵜⴰⵎⴰⵣⵉⵖⵜ"
+        }
+    }
+
+    var localizationCode: String? {
+        switch self {
+        case .system:
+            return nil
+        case .english:
+            return "en"
+        case .french:
+            return "fr"
+        case .spanish:
+            return "es"
+        case .german:
+            return "de"
+        case .italian:
+            return "it"
+        case .portugueseBrazil:
+            return "pt-BR"
+        case .russian:
+            return "ru"
+        case .japanese:
+            return "ja"
+        case .chineseSimplified:
+            return "zh-Hans"
+        case .arabic:
+            return "ar"
+        case .tamazight:
+            return "zgh"
+        }
+    }
 }
 
 enum DateFormatOption: String, CaseIterable, Identifiable {

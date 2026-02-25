@@ -24,6 +24,7 @@ struct ContentView: View {
     @AppStorage(SettingsKeys.thumbnailQuality) private var thumbnailQuality = ThumbnailQualityOption.medium.rawValue
     @AppStorage(SettingsKeys.dateFormat) private var dateFormatRaw = DateFormatOption.system.rawValue
     @AppStorage(SettingsKeys.defaultMediaRootPath) private var defaultMediaRootPath = FileManager.default.homeDirectoryForCurrentUser.appendingPathComponent("Pictures", isDirectory: true).path
+    @AppStorage(SettingsKeys.uiLanguage) private var uiLanguage = UILanguageOption.system.rawValue
 
     @State private var selectedItem: MediaItem?
     @State private var isViewerMediaFullscreen = false
@@ -111,6 +112,7 @@ struct ContentView: View {
         .onChange(of: defaultMediaRootPath) { _ in
             viewModel.syncDefaultRootFromSettings(loadIfNeeded: true)
         }
+        .id("content-\(uiLanguage)")
     }
 
     private var layoutMode: LayoutMode {
@@ -121,7 +123,7 @@ struct ContentView: View {
         VStack(spacing: 10) {
             HStack(spacing: 12) {
                 VStack(alignment: .leading, spacing: 2) {
-                    Text("Library")
+                    Text(L10n.s("topbar.library"))
                         .font(.title2.weight(.bold))
                         .foregroundStyle(.white)
 
@@ -140,7 +142,7 @@ struct ContentView: View {
                         HStack(spacing: 6) {
                             Image(systemName: "magnifyingglass")
                                 .foregroundStyle(.secondary)
-                            TextField("Search", text: $viewModel.searchQuery)
+                            TextField(L10n.s("topbar.search"), text: $viewModel.searchQuery)
                                 .textFieldStyle(.plain)
                                 .focused($isSearchFocused)
                                 .frame(width: 220)
@@ -233,7 +235,7 @@ struct ContentView: View {
                 Button {
                     viewModel.pickFolder()
                 } label: {
-                    Label("Select Folder", systemImage: "folder.fill.badge.plus")
+                    Label(L10n.s("topbar.select_folder"), systemImage: "folder.fill.badge.plus")
                         .font(.subheadline.weight(.semibold))
                         .foregroundStyle(.white)
                         .padding(.horizontal, 14)
@@ -258,7 +260,7 @@ struct ContentView: View {
 
                 Menu {
                     if let root = viewModel.defaultRootFolder {
-                        Button("Open Root: \(root.lastPathComponent)") {
+                        Button(String(format: L10n.s("topbar.open_root"), root.lastPathComponent)) {
                             viewModel.loadRootChildFolder(root)
                         }
                     }
@@ -271,17 +273,17 @@ struct ContentView: View {
                             }
                         }
                     } else {
-                        Button("No folders in root") {}
+                        Button(L10n.s("topbar.no_folders_in_root")) {}
                             .disabled(true)
                     }
 
                     Divider()
 
-                    Button("Change Root...") {
+                    Button(L10n.s("topbar.change_root")) {
                         viewModel.chooseDefaultRootFolder()
                     }
                 } label: {
-                    Label("Folders", systemImage: "folder")
+                    Label(L10n.s("topbar.folders"), systemImage: "folder")
                         .font(.subheadline.weight(.semibold))
                         .foregroundStyle(.white)
                         .padding(.horizontal, 12)
@@ -304,11 +306,11 @@ struct ContentView: View {
                 .shadow(color: Color.blue.opacity(0.22), radius: 7, y: 1)
 
                 Menu {
-                    Button("All") {
+                    Button(L10n.s("common.all")) {
                         viewModel.selectedCollectionName = nil
                         viewModel.albumScope = .all
                     }
-                    Button("Favorites") {
+                    Button(L10n.s("common.favorites")) {
                         viewModel.selectedCollectionName = nil
                         viewModel.albumScope = .favorites
                     }
@@ -321,14 +323,14 @@ struct ContentView: View {
                         }
                     }
                     Divider()
-                    Button("New Album...") {
+                    Button(L10n.s("albums.new")) {
                         promptForNewAlbum(prefilledItem: nil)
                     }
                     if let selected = viewModel.selectedCollectionName {
-                        Button("Rename \"\(selected)\"...") {
+                        Button(String(format: L10n.s("albums.rename"), selected)) {
                             promptRenameSelectedAlbum()
                         }
-                        Button("Delete \"\(selected)\"") {
+                        Button(String(format: L10n.s("albums.delete"), selected)) {
                             confirmDeleteSelectedAlbum()
                         }
                     }
@@ -336,7 +338,7 @@ struct ContentView: View {
                     HStack(spacing: 7) {
                         Image(systemName: "square.stack.3d.up")
                             .symbolRenderingMode(.monochrome)
-                        Text("Albums")
+                        Text(L10n.s("topbar.albums"))
                     }
                 }
                 .buttonStyle(.plain)
@@ -362,14 +364,14 @@ struct ContentView: View {
                 .shadow(color: Color.blue.opacity(0.22), radius: 7, y: 1)
 
                 Menu {
-                    Button("All") { viewModel.mediaFilter = .all }
-                    Button("Photos") { viewModel.mediaFilter = .photos }
-                    Button("Videos") { viewModel.mediaFilter = .videos }
+                    Button(L10n.s("common.all")) { viewModel.mediaFilter = .all }
+                    Button(L10n.s("media.photos")) { viewModel.mediaFilter = .photos }
+                    Button(L10n.s("media.videos")) { viewModel.mediaFilter = .videos }
                 } label: {
                     HStack(spacing: 7) {
                         Image(systemName: "line.3.horizontal.decrease.circle")
                             .symbolRenderingMode(.monochrome)
-                        Text(viewModel.mediaFilter.rawValue)
+                        Text(viewModel.mediaFilter.localizedName)
                     }
                 }
                 .buttonStyle(.plain)
@@ -396,7 +398,7 @@ struct ContentView: View {
 
                 Menu {
                     ForEach(SortMode.allCases) { sort in
-                        Button(sort.rawValue) {
+                        Button(sort.localizedName) {
                             viewModel.sortMode = sort
                         }
                     }
@@ -404,7 +406,7 @@ struct ContentView: View {
                     HStack(spacing: 7) {
                         Image(systemName: "arrow.up.arrow.down")
                             .symbolRenderingMode(.monochrome)
-                        Text(viewModel.sortMode.rawValue)
+                        Text(viewModel.sortMode.localizedName)
                     }
                 }
                 .buttonStyle(.plain)
@@ -486,13 +488,13 @@ struct ContentView: View {
                 Button {
                     toggleMultiSelect()
                 } label: {
-                    Label(isMultiSelectEnabled ? "Selecting" : "Select", systemImage: isMultiSelectEnabled ? "checkmark.circle.fill" : "checkmark.circle")
+                    Label(isMultiSelectEnabled ? L10n.s("selection.selecting") : L10n.s("selection.select"), systemImage: isMultiSelectEnabled ? "checkmark.circle.fill" : "checkmark.circle")
                         .font(.caption.weight(.semibold))
                 }
                 .buttonStyle(.bordered)
 
                 if isMultiSelectEnabled {
-                    Text("\(selectedMediaIDs.count) selected")
+                    Text(String(format: L10n.s("selection.count"), selectedMediaIDs.count))
                         .font(.caption.weight(.semibold))
                         .foregroundStyle(.white)
                         .padding(.horizontal, 10)
@@ -555,11 +557,11 @@ struct ContentView: View {
 
     private var emptyState: some View {
         VStack(spacing: 8) {
-            Text(viewModel.mediaItems.isEmpty ? "No media found" : "No matching results")
+            Text(viewModel.mediaItems.isEmpty ? L10n.s("empty.no_media") : L10n.s("empty.no_results"))
                 .font(.title3)
             Text(viewModel.mediaItems.isEmpty
-                 ? "Choose a folder that contains photos or videos."
-                 : "Try a different search term.")
+                 ? L10n.s("empty.choose_folder")
+                 : L10n.s("empty.try_search"))
                 .foregroundStyle(.secondary)
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
@@ -577,7 +579,7 @@ struct ContentView: View {
             VStack(spacing: 12) {
                 ProgressView()
                     .controlSize(.large)
-                Text("Loading media...")
+                Text(L10n.s("loading.media"))
                     .font(.headline)
                     .foregroundStyle(.primary)
             }
@@ -1187,7 +1189,7 @@ struct MediaViewer: View {
                 .background(.thinMaterial)
                 .clipShape(Circle())
 
-                Text("Number \(currentIndex + 1) / \(mediaItems.count)")
+                Text("\(currentIndex + 1) / \(mediaItems.count)")
                     .font(.system(size: 15, weight: .semibold))
                     .foregroundStyle(.primary)
                     .frame(height: 34)

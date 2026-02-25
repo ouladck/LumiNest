@@ -33,159 +33,324 @@ struct SettingsView: View {
     @AppStorage(SettingsKeys.showFullPath) private var showFullPath = true
     @AppStorage(SettingsKeys.copyPathFormat) private var copyPathFormat = CopyPathFormatOption.absolute.rawValue
 
+    @State private var settingsSearch = ""
     @State private var infoMessage: String?
 
     var body: some View {
-        TabView {
-            generalTab
-                .tabItem { Text("General") }
+        VStack(spacing: 12) {
+            HStack(spacing: 8) {
+                Image(systemName: "magnifyingglass")
+                    .foregroundStyle(.secondary)
+                TextField(L10n.s("settings.search"), text: $settingsSearch)
+                    .textFieldStyle(.plain)
+            }
+            .padding(.horizontal, 10)
+            .padding(.vertical, 8)
+            .background(Color.secondary.opacity(0.12))
+            .clipShape(RoundedRectangle(cornerRadius: 10))
 
-            viewerTab
-                .tabItem { Text("Viewer") }
+            if let infoMessage {
+                HStack(spacing: 8) {
+                    Image(systemName: "checkmark.circle.fill")
+                        .foregroundStyle(.green)
+                    Text(infoMessage)
+                        .font(.callout)
+                        .foregroundStyle(.secondary)
+                }
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .padding(.horizontal, 12)
+                .padding(.vertical, 8)
+                .background(Color.secondary.opacity(0.08))
+                .clipShape(RoundedRectangle(cornerRadius: 10))
+            }
 
-            performanceTab
-                .tabItem { Text("Performance") }
+            TabView {
+                generalTab
+                    .tabItem { Text(L10n.s("settings.tab.general")) }
 
-            albumsPrivacyTab
-                .tabItem { Text("Albums & Privacy") }
+                viewerTab
+                    .tabItem { Text(L10n.s("settings.tab.viewer")) }
 
-            diagnosticsTab
-                .tabItem { Text("Diagnostics") }
+                performanceTab
+                    .tabItem { Text(L10n.s("settings.tab.performance")) }
+
+                albumsPrivacyTab
+                    .tabItem { Text(L10n.s("settings.tab.albums_privacy")) }
+
+                diagnosticsTab
+                    .tabItem { Text(L10n.s("settings.tab.diagnostics")) }
+            }
         }
-        .padding(16)
+        .padding(14)
         .frame(minWidth: 760, minHeight: 520)
     }
 
     private var generalTab: some View {
-        Form {
-            Picker("Default start view", selection: $defaultLayout) {
-                Text("Grid").tag(LayoutMode.grid.rawValue)
-                Text("List").tag(LayoutMode.list.rawValue)
-            }
+        ScrollView {
+            VStack(alignment: .leading, spacing: 16) {
+                settingsCard(
+                    title: L10n.s("settings.general.startup.title"),
+                    subtitle: L10n.s("settings.general.startup.subtitle"),
+                    keywords: ["startup", "default", "layout", "sort", "open", "launch"]
+                ) {
+                    Picker(L10n.s("settings.general.default_view"), selection: $defaultLayout) {
+                        Text(L10n.s("common.grid")).tag(LayoutMode.grid.rawValue)
+                        Text(L10n.s("common.list")).tag(LayoutMode.list.rawValue)
+                    }
 
-            Picker("Default sort", selection: $defaultSort) {
-                ForEach(SortMode.allCases) { mode in
-                    Text(mode.rawValue).tag(mode.rawValue)
+                    Picker(L10n.s("settings.general.default_sort"), selection: $defaultSort) {
+                        ForEach(SortMode.allCases) { mode in
+                            Text(mode.localizedName).tag(mode.rawValue)
+                        }
+                    }
+
+                    Toggle(L10n.s("settings.general.open_last_folder"), isOn: $openLastFolderOnLaunch)
+                }
+
+                settingsCard(
+                    title: L10n.s("settings.general.library_root.title"),
+                    subtitle: L10n.s("settings.general.library_root.subtitle"),
+                    keywords: ["library", "root", "folder", "path", "default"]
+                ) {
+                    HStack(alignment: .center, spacing: 10) {
+                        VStack(alignment: .leading, spacing: 4) {
+                            Text(L10n.s("settings.general.default_media_root"))
+                                .font(.callout.weight(.semibold))
+                            Text(defaultMediaRootPath)
+                                .font(.caption)
+                                .foregroundStyle(.secondary)
+                                .lineLimit(2)
+                        }
+
+                        Spacer(minLength: 0)
+
+                        Button(L10n.s("common.choose")) {
+                            chooseDefaultMediaRoot()
+                        }
+                        .buttonStyle(.borderedProminent)
+                    }
+                }
+
+                settingsCard(
+                    title: L10n.s("settings.general.locale.title"),
+                    subtitle: L10n.s("settings.general.locale.subtitle"),
+                    keywords: ["language", "date", "format", "locale"]
+                ) {
+                    Picker(L10n.s("settings.general.ui_language"), selection: $uiLanguage) {
+                        ForEach(UILanguageOption.allCases) { option in
+                            Text(option.displayName).tag(option.rawValue)
+                        }
+                    }
+
+                    Picker(L10n.s("settings.general.date_format"), selection: $dateFormat) {
+                        ForEach(DateFormatOption.allCases) { option in
+                            Text(option.rawValue).tag(option.rawValue)
+                        }
+                    }
+                }
+
+                HStack {
+                    Spacer()
+                    Button(L10n.s("settings.reset_tab")) {
+                        resetGeneralTab()
+                        infoMessage = L10n.s("settings.message.general_reset")
+                    }
+                    .buttonStyle(.bordered)
                 }
             }
-
-            Toggle("Open last folder on launch", isOn: $openLastFolderOnLaunch)
-
-            HStack(alignment: .center, spacing: 10) {
-                Text("Default media root")
-                Text(defaultMediaRootPath)
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
-                    .lineLimit(1)
-
-                Spacer(minLength: 0)
-
-                Button("Choose...") {
-                    chooseDefaultMediaRoot()
-                }
-            }
-
-            Picker("UI language", selection: $uiLanguage) {
-                ForEach(UILanguageOption.allCases) { option in
-                    Text(option.rawValue).tag(option.rawValue)
-                }
-            }
-
-            Picker("Date format", selection: $dateFormat) {
-                ForEach(DateFormatOption.allCases) { option in
-                    Text(option.rawValue).tag(option.rawValue)
-                }
-            }
+            .padding(.vertical, 4)
         }
+        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
     }
 
     private var viewerTab: some View {
-        Form {
-            Toggle("Autoplay videos in preview", isOn: $viewerAutoplay)
-            Toggle("Details expanded by default", isOn: $detailsExpandedByDefault)
-            Toggle("Loop video when it ends", isOn: $viewerLoopVideo)
+        ScrollView {
+            VStack(alignment: .leading, spacing: 16) {
+                settingsCard(
+                    title: L10n.s("settings.viewer.playback.title"),
+                    subtitle: L10n.s("settings.viewer.playback.subtitle"),
+                    keywords: ["viewer", "playback", "autoplay", "loop", "video"]
+                ) {
+                    Toggle(L10n.s("settings.viewer.autoplay"), isOn: $viewerAutoplay)
+                    Toggle(L10n.s("settings.viewer.loop"), isOn: $viewerLoopVideo)
+                }
 
-            VStack(alignment: .leading, spacing: 6) {
-                Text("Swipe sensitivity (\(Int(swipeSensitivity)))")
-                Slider(value: $swipeSensitivity, in: 20...120, step: 5)
+                settingsCard(
+                    title: L10n.s("settings.viewer.navigation.title"),
+                    subtitle: L10n.s("settings.viewer.navigation.subtitle"),
+                    keywords: ["viewer", "swipe", "navigation", "sensitivity"]
+                ) {
+                    VStack(alignment: .leading, spacing: 6) {
+                        HStack {
+                            Text(L10n.s("settings.viewer.swipe_sensitivity"))
+                            Spacer()
+                            Text("\(Int(swipeSensitivity))")
+                                .foregroundStyle(.secondary)
+                        }
+                        Slider(value: $swipeSensitivity, in: 20...120, step: 5)
+                    }
+                }
+
+                settingsCard(
+                    title: L10n.s("settings.viewer.metadata.title"),
+                    subtitle: L10n.s("settings.viewer.metadata.subtitle"),
+                    keywords: ["viewer", "details", "metadata"]
+                ) {
+                    Toggle(L10n.s("settings.viewer.details_expanded"), isOn: $detailsExpandedByDefault)
+                }
+
+                HStack {
+                    Spacer()
+                    Button(L10n.s("settings.reset_tab")) {
+                        resetViewerTab()
+                        infoMessage = L10n.s("settings.message.viewer_reset")
+                    }
+                    .buttonStyle(.bordered)
+                }
             }
+            .padding(.vertical, 4)
         }
+        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
     }
 
     private var performanceTab: some View {
-        Form {
-            Picker("Thumbnail quality", selection: $thumbnailQuality) {
-                ForEach(ThumbnailQualityOption.allCases) { option in
-                    Text(option.rawValue).tag(option.rawValue)
+        ScrollView {
+            VStack(alignment: .leading, spacing: 16) {
+                settingsCard(
+                    title: L10n.s("settings.performance.thumbnails.title"),
+                    subtitle: L10n.s("settings.performance.thumbnails.subtitle"),
+                    keywords: ["performance", "thumbnail", "quality", "cache"]
+                ) {
+                    Picker(L10n.s("settings.performance.thumbnail_quality"), selection: $thumbnailQuality) {
+                        ForEach(ThumbnailQualityOption.allCases) { option in
+                            Text(option.rawValue).tag(option.rawValue)
+                        }
+                    }
+
+                    Picker(L10n.s("settings.performance.thumbnail_cache_size"), selection: $thumbnailCacheLimit) {
+                        ForEach(ThumbnailCacheLimitOption.allCases) { option in
+                            Text(option.rawValue).tag(option.rawValue)
+                        }
+                    }
+                }
+
+                settingsCard(
+                    title: L10n.s("settings.performance.background.title"),
+                    subtitle: L10n.s("settings.performance.background.subtitle"),
+                    keywords: ["performance", "scan", "priority", "preload"]
+                ) {
+                    Toggle(L10n.s("settings.performance.preload_neighbors"), isOn: $preloadNeighbors)
+
+                    Picker(L10n.s("settings.performance.scan_priority"), selection: $scanPriority) {
+                        ForEach(ScanPriorityOption.allCases) { option in
+                            Text(option.rawValue).tag(option.rawValue)
+                        }
+                    }
+                }
+
+                HStack {
+                    Spacer()
+                    Button(L10n.s("settings.reset_tab")) {
+                        resetPerformanceTab()
+                        infoMessage = L10n.s("settings.message.performance_reset")
+                    }
+                    .buttonStyle(.bordered)
                 }
             }
-
-            Picker("Thumbnail cache size", selection: $thumbnailCacheLimit) {
-                ForEach(ThumbnailCacheLimitOption.allCases) { option in
-                    Text(option.rawValue).tag(option.rawValue)
-                }
-            }
-
-            Toggle("Preload next/previous media", isOn: $preloadNeighbors)
-
-            Picker("Background scan priority", selection: $scanPriority) {
-                ForEach(ScanPriorityOption.allCases) { option in
-                    Text(option.rawValue).tag(option.rawValue)
-                }
-            }
+            .padding(.vertical, 4)
         }
+        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
     }
 
     private var albumsPrivacyTab: some View {
-        Form {
-            Toggle("Confirm before removing favorite", isOn: $confirmFavoriteRemoval)
-            Toggle("Confirm before deleting album", isOn: $confirmAlbumDelete)
-            Toggle("Auto-select album after creation", isOn: $autoSelectCreatedAlbum)
-            Toggle("Show favorite star in gallery", isOn: $showFavoriteStar)
+        ScrollView {
+            VStack(alignment: .leading, spacing: 16) {
+                settingsCard(
+                    title: L10n.s("settings.albums_favorites.title"),
+                    subtitle: L10n.s("settings.albums_favorites.subtitle"),
+                    keywords: ["album", "favorite", "confirm", "star"]
+                ) {
+                    Toggle(L10n.s("settings.albums.confirm_remove_favorite"), isOn: $confirmFavoriteRemoval)
+                    Toggle(L10n.s("settings.albums.confirm_delete_album"), isOn: $confirmAlbumDelete)
+                    Toggle(L10n.s("settings.albums.auto_select_created"), isOn: $autoSelectCreatedAlbum)
+                    Toggle(L10n.s("settings.albums.show_favorite_star"), isOn: $showFavoriteStar)
+                }
 
-            Divider()
+                settingsCard(
+                    title: L10n.s("settings.file_path_actions.title"),
+                    subtitle: L10n.s("settings.file_path_actions.subtitle"),
+                    keywords: ["trash", "path", "copy", "privacy"]
+                ) {
+                    Toggle(L10n.s("settings.file.confirm_move_trash"), isOn: $confirmMoveToTrash)
+                    Toggle(L10n.s("settings.file.show_full_path"), isOn: $showFullPath)
 
-            Toggle("Confirm before move to Trash", isOn: $confirmMoveToTrash)
-            Toggle("Show full selected-folder path", isOn: $showFullPath)
+                    Picker(L10n.s("settings.file.copy_path_format"), selection: $copyPathFormat) {
+                        ForEach(CopyPathFormatOption.allCases) { option in
+                            Text(option.rawValue).tag(option.rawValue)
+                        }
+                    }
+                }
 
-            Picker("Copy path format", selection: $copyPathFormat) {
-                ForEach(CopyPathFormatOption.allCases) { option in
-                    Text(option.rawValue).tag(option.rawValue)
+                HStack {
+                    Spacer()
+                    Button(L10n.s("settings.reset_tab")) {
+                        resetAlbumsPrivacyTab()
+                        infoMessage = L10n.s("settings.message.albums_privacy_reset")
+                    }
+                    .buttonStyle(.bordered)
                 }
             }
+            .padding(.vertical, 4)
         }
+        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
     }
 
     private var diagnosticsTab: some View {
-        VStack(alignment: .leading, spacing: 14) {
-            Text("Version \(appVersion) (\(buildNumber))")
-                .font(.headline)
-
-            HStack(spacing: 12) {
-                Button("Clear Caches") {
-                    FullImageProvider.shared.clearCache()
-                    NotificationCenter.default.post(name: .luminestClearCaches, object: nil)
-                    infoMessage = "Caches cleared."
+        ScrollView {
+            VStack(alignment: .leading, spacing: 16) {
+                settingsCard(
+                    title: L10n.s("settings.diagnostics.application.title"),
+                    subtitle: L10n.s("settings.diagnostics.application.subtitle"),
+                    keywords: ["diagnostics", "version", "build", "app"]
+                ) {
+                    Text("Version \(appVersion) (\(buildNumber))")
+                        .font(.headline)
                 }
 
-                Button("Reset All Settings") {
-                    resetSettings()
-                    infoMessage = "Settings reset to defaults."
+                settingsCard(
+                    title: L10n.s("settings.diagnostics.maintenance.title"),
+                    subtitle: L10n.s("settings.diagnostics.maintenance.subtitle"),
+                    keywords: ["diagnostics", "cache", "clear", "export"]
+                ) {
+                    HStack(spacing: 12) {
+                        Button(L10n.s("settings.diagnostics.clear_caches")) {
+                            FullImageProvider.shared.clearCache()
+                            NotificationCenter.default.post(name: .luminestClearCaches, object: nil)
+                            infoMessage = L10n.s("settings.message.caches_cleared")
+                        }
+
+                        Button(L10n.s("settings.diagnostics.export_diagnostics")) {
+                            exportDiagnostics()
+                        }
+                    }
                 }
 
-                Button("Export Diagnostics") {
-                    exportDiagnostics()
+                settingsCard(
+                    title: L10n.s("settings.diagnostics.danger_zone.title"),
+                    subtitle: L10n.s("settings.diagnostics.danger_zone.subtitle"),
+                    keywords: ["reset", "danger", "diagnostics", "defaults"]
+                ) {
+                    Button(L10n.s("settings.diagnostics.reset_all")) {
+                        resetSettings()
+                        infoMessage = L10n.s("settings.message.all_reset")
+                    }
+                    .buttonStyle(.borderedProminent)
+                    .tint(.red)
                 }
             }
-
-            if let infoMessage {
-                Text(infoMessage)
-                    .foregroundStyle(.secondary)
-            }
-
-            Spacer()
+            .padding(.vertical, 4)
         }
-        .frame(maxWidth: .infinity, alignment: .leading)
+        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
     }
 
     private var appVersion: String {
@@ -216,6 +381,43 @@ struct SettingsView: View {
         for key in keys {
             defaults.removeObject(forKey: key)
         }
+    }
+
+    private func resetGeneralTab() {
+        let defaults = UserDefaults.standard
+        let keys = [
+            SettingsKeys.defaultLayout, SettingsKeys.defaultSort, SettingsKeys.openLastFolderOnLaunch,
+            SettingsKeys.defaultMediaRootPath, SettingsKeys.uiLanguage, SettingsKeys.dateFormat
+        ]
+        for key in keys { defaults.removeObject(forKey: key) }
+    }
+
+    private func resetViewerTab() {
+        let defaults = UserDefaults.standard
+        let keys = [
+            SettingsKeys.viewerAutoplay, SettingsKeys.viewerDetailsExpandedByDefault,
+            SettingsKeys.viewerLoopVideo, SettingsKeys.viewerSwipeSensitivity
+        ]
+        for key in keys { defaults.removeObject(forKey: key) }
+    }
+
+    private func resetPerformanceTab() {
+        let defaults = UserDefaults.standard
+        let keys = [
+            SettingsKeys.thumbnailQuality, SettingsKeys.thumbnailCacheLimit,
+            SettingsKeys.preloadNeighbors, SettingsKeys.scanPriority
+        ]
+        for key in keys { defaults.removeObject(forKey: key) }
+    }
+
+    private func resetAlbumsPrivacyTab() {
+        let defaults = UserDefaults.standard
+        let keys = [
+            SettingsKeys.confirmFavoriteRemoval, SettingsKeys.confirmAlbumDelete,
+            SettingsKeys.autoSelectCreatedAlbum, SettingsKeys.showFavoriteStar,
+            SettingsKeys.confirmMoveToTrash, SettingsKeys.showFullPath, SettingsKeys.copyPathFormat
+        ]
+        for key in keys { defaults.removeObject(forKey: key) }
     }
 
     private func exportDiagnostics() {
@@ -265,5 +467,39 @@ struct SettingsView: View {
 
         guard panel.runModal() == .OK, let url = panel.url else { return }
         defaultMediaRootPath = url.path
+    }
+
+    @ViewBuilder
+    private func settingsCard<Content: View>(
+        title: String,
+        subtitle: String,
+        keywords: [String],
+        @ViewBuilder content: () -> Content
+    ) -> some View {
+        if shouldShow(keywords: keywords + [title, subtitle]) {
+            VStack(alignment: .leading, spacing: 10) {
+                Text(title)
+                    .font(.headline)
+                Text(subtitle)
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                Divider()
+                content()
+            }
+            .padding(14)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .background(Color.secondary.opacity(0.08))
+            .overlay(
+                RoundedRectangle(cornerRadius: 12)
+                    .stroke(Color.secondary.opacity(0.18), lineWidth: 1)
+            )
+            .clipShape(RoundedRectangle(cornerRadius: 12))
+        }
+    }
+
+    private func shouldShow(keywords: [String]) -> Bool {
+        let query = settingsSearch.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
+        guard !query.isEmpty else { return true }
+        return keywords.contains { $0.lowercased().contains(query) }
     }
 }

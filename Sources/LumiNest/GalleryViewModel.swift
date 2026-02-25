@@ -8,6 +8,14 @@ enum MediaFilter: String, CaseIterable, Identifiable {
     case videos = "Videos"
 
     var id: String { rawValue }
+
+    var localizedName: String {
+        switch self {
+        case .all: return L10n.s("common.all")
+        case .photos: return L10n.s("media.photos")
+        case .videos: return L10n.s("media.videos")
+        }
+    }
 }
 
 enum SortMode: String, CaseIterable, Identifiable {
@@ -16,6 +24,14 @@ enum SortMode: String, CaseIterable, Identifiable {
     case size = "Size"
 
     var id: String { rawValue }
+
+    var localizedName: String {
+        switch self {
+        case .name: return L10n.s("sort.name")
+        case .date: return L10n.s("sort.date")
+        case .size: return L10n.s("sort.size")
+        }
+    }
 }
 
 enum AlbumScope: String, CaseIterable, Identifiable {

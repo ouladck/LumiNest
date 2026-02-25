@@ -3,6 +3,7 @@ import PackageDescription
 
 let package = Package(
     name: "LumiNest",
+    defaultLocalization: "en",
     platforms: [
         .macOS(.v13)
     ],
@@ -13,6 +14,9 @@ let package = Package(
         .executableTarget(
             name: "LumiNest",
             path: "Sources/LumiNest",
+            resources: [
+                .process("Resources")
+            ],
             linkerSettings: [
                 .linkedLibrary("sqlite3")
             ]
