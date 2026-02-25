@@ -1,0 +1,108 @@
+"topbar.library" = "ⵜⴰⵎⴽⴰⵔⴹⵉⵜ";
+"topbar.select_folder" = "ⴼⵔⵏ ⴰⴽⴰⵔⴰⵎ";
+"topbar.folders" = "ⵉⴽⴰⵔⴰⵎⵏ";
+"topbar.open_root" = "ⵍⴷⵉ ⴰⵥⴰⵔ: %@";
+"topbar.no_folders_in_root" = "ⵓⵍⴰⵛ ⵉⴽⴰⵔⴰⵎⵏ ⴳ ⵓⵥⴰⵔ";
+"topbar.change_root" = "ⴱⴷⴷⵍ ⴰⵥⴰⵔ...";
+"topbar.albums" = "ⴰⵍⴱⵓⵎⴰⵜ";
+"topbar.search" = "ⵏⴰⴷⵉ";
+
+"common.all" = "ⴰⴽⴽ";
+"common.favorites" = "ⵉⵎⵏⵢⴰⴼⵏ";
+"common.choose" = "ⴼⵔⵏ...";
+"common.grid" = "ⴰⵥⵟⵟⴰ";
+"common.list" = "ⵜⴰⴱⴷⴰⵔⵜ";
+
+"media.photos" = "ⵜⵉⵡⵍⴰⴼⵉⵏ";
+"media.videos" = "ⵜⵉⵖⵔⴰⴹⵉⵏ";
+
+"albums.new" = "ⴰⵍⴱⵓⵎ ⴰⵎⴰⵢⵏⵓ...";
+"albums.rename" = "ⴱⴷⴷⵍ ⵉⵙⵎ \"%@\"...";
+"albums.delete" = "ⴽⴽⵙ \"%@\"";
+
+"selection.select" = "ⴼⵔⵏ";
+"selection.selecting" = "ⴰⵙⴼⵔⴰⵏ";
+"selection.count" = "%d ⵉ ⵢⴻⵜⵜⵡⴰⴼⵔⴰⵏ";
+
+"empty.no_media" = "ⵓⵍⴰⵛ ⴰⵎⵉⴷⵢⴰ ⵢⴻⵜⵜⵡⴰⴼⴻⵏ";
+"empty.no_results" = "ⵓⵍⴰⵛ ⵉⴳⵎⴰⴹ ⵢⴻⵎⵙⴰⴷⴰⵏ";
+"empty.choose_folder" = "ⴼⵔⵏ ⴰⴽⴰⵔⴰⵎ ⵉⵍⴰⵏ ⵜⵉⵡⵍⴰⴼⵉⵏ ⵏⴻⵖ ⵜⵉⵖⵔⴰⴹⵉⵏ.";
+"empty.try_search" = "ⴰⵔⵓ ⴰⵡⴰⵍ ⵏⵏⵉⴹⵏ ⵉ ⵜⵎⵖⵓⵏⵜ.";
+"loading.media" = "ⴰⵙⴰⵍⵉ ⵏ ⵉⵎⵉⴷⵢⴰ...";
+
+"settings.search" = "ⵏⴰⴷⵉ ⴳ ⵉⵖⵡⵡⴰⵔⵏ";
+"settings.tab.general" = "ⴰⵎⴰⵜⴰⵢ";
+"settings.tab.viewer" = "ⴰⵎⵙⴽⴰⵏ";
+"settings.tab.performance" = "ⴰⴷⴷⴰⴷ";
+"settings.tab.albums_privacy" = "ⴰⵍⴱⵓⵎⴰⵜ ⴷ ⵓⵙⵉⵔ";
+"settings.tab.diagnostics" = "ⴰⴷⵢⴰⴳⵏⵓⵙ";
+"settings.reset_tab" = "ⵙⴱⴷⴷ ⵜⴰⴱⵍⴰⵟ-a";
+
+"settings.general.startup.title" = "ⴰⵙⴽⴽⵉⵔ";
+"settings.general.startup.subtitle" = "ⴰⵙⵏⴼⴰⵍ ⵏ ⵓⵎⵣⵡⴰⵔⵓ ⵎⵉ ⵢⴻⵟⵟⵓⵏ ⵓⵙⵏⴰⵙ.";
+"settings.general.default_view" = "ⴰⵙⴽⴰⵏ ⵏ ⵓⵎⵣⵡⴰⵔ";
+"settings.general.default_sort" = "ⴰⵙⵎⵉⵍ ⵏ ⵓⵎⵣⵡⴰⵔ";
+"settings.general.open_last_folder" = "ⵍⴷⵉ ⴰⴽⴰⵔⴰⵎ ⴰⵎⴳⴳⴰⵔⵓ ⴳ ⵓⵙⴽⴽⵉⵔ";
+"settings.general.library_root.title" = "ⴰⵥⴰⵔ ⵏ ⵜⴰⵎⴽⴰⵔⴹⵉⵜ";
+"settings.general.library_root.subtitle" = "ⴼⵔⵏ ⴰⴱⵔⵉⴷ ⵏ ⵓⵥⴰⵔ ⵏ ⵓⵎⵣⵡⴰⵔ ⵉ ⵉⴽⴰⵔⴰⵎⵏ ⴳ ⵓⴼⵍⵍⴰ.";
+"settings.general.default_media_root" = "ⴰⵥⴰⵔ ⵏ ⵉⵎⵉⴷⵢⴰ";
+"settings.general.locale.title" = "ⵜⵓⵏⵖⵉⵍⵜ";
+"settings.general.locale.subtitle" = "ⵉⵙⵎⵏⵓⴷⴰ ⵏ ⵜⵓⵜⵍⴰⵢⵜ ⴷ ⵓⵙⵎⵉⵍ ⵏ ⵓⵣⵎⵣ.";
+"settings.general.ui_language" = "ⵜⵓⵜⵍⴰⵢⵜ ⵏ ⵓⵎⵓⴷ";
+"settings.general.date_format" = "ⴰⵙⵎⵉⵍ ⵏ ⵓⵣⵎⵣ";
+
+"settings.viewer.playback.title" = "ⴰⵖⵔⴰⴹ";
+"settings.viewer.playback.subtitle" = "ⵎⴰⵎⴽ ⵜⵜⴰⵎⵣⵔⴰⵢ ⵜⵉⵖⵔⴰⴹⵉⵏ ⴳ ⵓⵎⵙⴽⴰⵏ.";
+"settings.viewer.autoplay" = "ⴰⵖⵔⴰⴹ ⵙ ⵢⵉⵎⴰⵏ ⵏ ⵜⵉⵖⵔⴰⴹⵉⵏ ⴳ ⵓⵎⵙⴽⴰⵏ";
+"settings.viewer.loop" = "ⴰⵣⵏⵏⵉ ⵏ ⵜⵉⵖⵔⴰⴹⵉⵏ ⵎⴰⵔⴰ ⵜⴼⵓⴽ";
+"settings.viewer.navigation.title" = "ⵜⵉⵏⵉⴳⴰⵡⵜ";
+"settings.viewer.navigation.subtitle" = "ⵙⵏⴼⵍ ⴰⵔⴰⵔ ⵏ ⵓⴽⵔⴰⴷ ⴳ ⵓⵎⵙⴽⴰⵏ.";
+"settings.viewer.swipe_sensitivity" = "ⴰⵔⴰⵔ ⵏ ⵓⴽⵔⴰⴷ";
+"settings.viewer.metadata.title" = "ⵎⵉⵜⴰⴷⴰⵜⴰ";
+"settings.viewer.metadata.subtitle" = "ⴰⵙⵏⴼⴰⵍ ⵏ ⵓⵎⵣⵡⴰⵔ ⵏ ⵜⴼⵍⴰⵍⵉⵏ.";
+"settings.viewer.details_expanded" = "ⵙⵎⵍⵍⴰⵍ ⵜⴼⵍⴰⵍⵉⵏ ⵙ ⵓⵎⵣⵡⴰⵔ";
+
+"settings.performance.thumbnails.title" = "ⵜⵉⵡⵍⴰⴼⵉⵏ ⵜⵉⵎⵥⵥⵉⵢⵉⵏ";
+"settings.performance.thumbnails.subtitle" = "ⵙⵎⵙⴰⵙⴰ ⴳⵔ ⵜⴳⴰⵔⴰ ⴷ ⵣⵣⵔⴱ.";
+"settings.performance.thumbnail_quality" = "ⵜⴰⴳⴰⵔⴰ ⵏ ⵜⵉⵡⵍⴰⴼⵉⵏ";
+"settings.performance.thumbnail_cache_size" = "ⵜⵉⵇⵇⵉ ⵏ ⵜⵓⵙⵇⵉⴼⵜ";
+"settings.performance.background.title" = "ⴰⵎⴰⵢⵏⵓ ⴳ ⴷⴰⴼⴼⵉⵔ";
+"settings.performance.background.subtitle" = "ⵙⵏⴼⵍ ⵜⴰⵎⵣⵡⴰⵔⵓⵜ ⵏ ⵓⴼⵔⵓⵙ ⴷ ⵓⵣⴷⴷⴰⵢ.";
+"settings.performance.preload_neighbors" = "ⵙⴰⵍⵉ ⵓⵣⵣⵍⴰⵏ ⵉⵣⵣⵔⴰⵏ/ⵢⴻⴹⴼⵔⴻⵏ";
+"settings.performance.scan_priority" = "ⵜⴰⵎⵣⵡⴰⵔⵓⵜ ⵏ ⵓⴼⵔⵓⵙ";
+
+"settings.albums_favorites.title" = "ⴰⵍⴱⵓⵎⴰⵜ ⴷ ⵉⵎⵏⵢⴰⴼⵏ";
+"settings.albums_favorites.subtitle" = "ⵙⵏⴼⵍ ⴰⵙⵏⴼⴰⵍ ⵏ ⴰⵍⴱⵓⵎⴰⵜ ⴷ ⵉⵎⵏⵢⴰⴼⵏ.";
+"settings.albums.confirm_remove_favorite" = "ⵙⵙⴻⵏⵜⴻⵎ ⵙⴻⵏⴷ ⴰⴽⴽⵙ ⵙⴳ ⵉⵎⵏⵢⴰⴼⵏ";
+"settings.albums.confirm_delete_album" = "ⵙⵙⴻⵏⵜⴻⵎ ⵙⴻⵏⴷ ⴰⴽⴽⵙ ⴰⵍⴱⵓⵎ";
+"settings.albums.auto_select_created" = "ⴼⵔⵏ ⴰⵍⴱⵓⵎ ⴰⵎⴰⵢⵏⵓ ⵙ ⵢⵉⵎⴰⵏ";
+"settings.albums.show_favorite_star" = "ⵙⵙⴽⵏ ⵜⵉⵜⵔⵉ ⵏ ⵉⵎⵏⵢⴰⴼⵏ ⴳ ⵜⵎⴰⴷⴰⵢⵜ";
+
+"settings.file_path_actions.title" = "ⵉⵙⵙⵓⵔⴼⵏ ⵏ ⵓⴼⴰⵢⵍⵓ ⴷ ⵓⴱⵔⵉⴷ";
+"settings.file_path_actions.subtitle" = "ⵙⵏⴼⵍ ⴰⵙⵙⴽⵏ ⵏ ⵓⴱⵔⵉⴷ ⴷ ⵓⵙⵙⴻⵏⵜⴻⵎ ⵏ ⵉⵙⴽⴽⵉⵏⵏ.";
+"settings.file.confirm_move_trash" = "ⵙⵙⴻⵏⵜⴻⵎ ⵙⴻⵏⴷ ⴰⵣⵣⵡⵉ ⵙ ⵜⵙⴰⵎⴹⵉ";
+"settings.file.show_full_path" = "ⵙⵙⴽⵏ ⴰⴱⵔⵉⴷ ⵓⵎⵉⴷⴷⵉ ⵏ ⵓⴽⴰⵔⴰⵎ ⵢⴻⵜⵜⵡⴰⴼⵔⴰⵏ";
+"settings.file.copy_path_format" = "ⴰⵙⵎⵉⵍ ⵏ ⵜⵏⵖⵍⵜ ⵏ ⵓⴱⵔⵉⴷ";
+
+"settings.diagnostics.application.title" = "ⴰⵙⵏⴰⵙ";
+"settings.diagnostics.application.subtitle" = "ⵉⵙⴼⴽⴰ ⵏ ⵍⴼⵉⵔⵙⵢⵓⵏ ⴷ ⵍⴱⵉⵍⴷ.";
+"settings.diagnostics.maintenance.title" = "ⴰⵙⵖⵉⵡⵙ";
+"settings.diagnostics.maintenance.subtitle" = "ⵉⵙⴽⴽⵉⵏⵏ ⵉⵣⵔⴱⴰⵏ ⵏ ⵓⵙⵖⵉⵡⵙ.";
+"settings.diagnostics.clear_caches" = "ⵙⴼⴷ ⵜⵓⵙⵇⵉⴼⵉⵏ";
+"settings.diagnostics.export_diagnostics" = "ⵙⵙⵓⴼⵖ ⴰⴷⵢⴰⴳⵏⵓⵙ";
+"settings.diagnostics.danger_zone.title" = "ⴰⵎⴰⴹⴰⵍ ⴰⵏⴳⴳⵓⴳ";
+"settings.diagnostics.danger_zone.subtitle" = "ⵙⴱⴷⴷ ⴰⴽⴽ ⵉⵖⵡⵡⴰⵔⵏ ⵙ ⵓⵎⵣⵡⴰⵔ.";
+"settings.diagnostics.reset_all" = "ⵙⴱⴷⴷ ⴰⴽⴽ ⵉⵖⵡⵡⴰⵔⵏ";
+
+"settings.message.general_reset" = "ⵉⵖⵡⵡⴰⵔⵏ ⵉⵎⴰⵜⴰⵢⵏ ⵢⴻⵜⵜⵓⵙⴱⴷⴷⵏ.";
+"settings.message.viewer_reset" = "ⵉⵖⵡⵡⴰⵔⵏ ⵏ ⵓⵎⵙⴽⴰⵏ ⵢⴻⵜⵜⵓⵙⴱⴷⴷⵏ.";
+"settings.message.performance_reset" = "ⵉⵖⵡⵡⴰⵔⵏ ⵏ ⵓⴷⴷⴰⴷ ⵢⴻⵜⵜⵓⵙⴱⴷⴷⵏ.";
+"settings.message.albums_privacy_reset" = "ⵉⵖⵡⵡⴰⵔⵏ ⵏ ⴰⵍⴱⵓⵎⴰⵜ ⴷ ⵓⵙⵉⵔ ⵢⴻⵜⵜⵓⵙⴱⴷⴷⵏ.";
+"settings.message.caches_cleared" = "ⵜⵓⵙⵇⵉⴼⵉⵏ ⵜⵜⵓⵙⴼⴷⵏ.";
+"settings.message.all_reset" = "ⵉⵖⵡⵡⴰⵔⵏ ⵢⴻⵜⵜⵓⵙⴱⴷⴷⵏ ⵙ ⵓⵎⵣⵡⴰⵔ.";
+
+"sort.name" = "ⵉⵙⵎ";
+
+"sort.date" = "ⴰⵣⵎⵣ";
+
+"sort.size" = "ⵜⵉⵇⵇⵉ";

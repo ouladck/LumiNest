@@ -1,0 +1,109 @@
+"topbar.library" = "Library";
+"topbar.select_folder" = "Select Folder";
+"topbar.folders" = "Folders";
+"topbar.open_root" = "Open Root: %@";
+"topbar.no_folders_in_root" = "No folders in root";
+"topbar.change_root" = "Change Root...";
+
+"common.all" = "All";
+"common.favorites" = "Favorites";
+"common.choose" = "Choose...";
+"common.grid" = "Grid";
+"common.list" = "List";
+
+"media.photos" = "Photos";
+"media.videos" = "Videos";
+
+"albums.new" = "New Album...";
+"albums.rename" = "Rename \"%@\"...";
+"albums.delete" = "Delete \"%@\"";
+
+"selection.select" = "Select";
+"selection.selecting" = "Selecting";
+"selection.count" = "%d selected";
+
+"empty.no_media" = "No media found";
+"empty.no_results" = "No matching results";
+"empty.choose_folder" = "Choose a folder that contains photos or videos.";
+"empty.try_search" = "Try a different search term.";
+"loading.media" = "Loading media...";
+
+"settings.search" = "Search settings";
+"settings.tab.general" = "General";
+"settings.tab.viewer" = "Viewer";
+"settings.tab.performance" = "Performance";
+"settings.tab.albums_privacy" = "Albums & Privacy";
+"settings.tab.diagnostics" = "Diagnostics";
+"settings.reset_tab" = "Reset This Tab";
+
+"settings.general.startup.title" = "Startup";
+"settings.general.startup.subtitle" = "Default behavior when the app opens.";
+"settings.general.default_view" = "Default start view";
+"settings.general.default_sort" = "Default sort";
+"settings.general.open_last_folder" = "Open last folder on launch";
+"settings.general.library_root.title" = "Library Root";
+"settings.general.library_root.subtitle" = "Pick the default root path for folders shown in the top bar.";
+"settings.general.default_media_root" = "Default media root";
+"settings.general.locale.title" = "Locale";
+"settings.general.locale.subtitle" = "Language and date formatting preferences.";
+"settings.general.ui_language" = "UI language";
+"settings.general.date_format" = "Date format";
+
+"settings.viewer.playback.title" = "Playback";
+"settings.viewer.playback.subtitle" = "How video behaves when preview opens or ends.";
+"settings.viewer.autoplay" = "Autoplay videos in preview";
+"settings.viewer.loop" = "Loop video when it ends";
+"settings.viewer.navigation.title" = "Navigation";
+"settings.viewer.navigation.subtitle" = "Tune swipe responsiveness in preview.";
+"settings.viewer.swipe_sensitivity" = "Swipe sensitivity";
+"settings.viewer.metadata.title" = "Metadata";
+"settings.viewer.metadata.subtitle" = "Default details panel behavior.";
+"settings.viewer.details_expanded" = "Details expanded by default";
+
+"settings.performance.thumbnails.title" = "Thumbnails";
+"settings.performance.thumbnails.subtitle" = "Balance quality and speed for gallery rendering.";
+"settings.performance.thumbnail_quality" = "Thumbnail quality";
+"settings.performance.thumbnail_cache_size" = "Thumbnail cache size";
+"settings.performance.background.title" = "Background Work";
+"settings.performance.background.subtitle" = "Control scan priority and preloading strategy.";
+"settings.performance.preload_neighbors" = "Preload next/previous media";
+"settings.performance.scan_priority" = "Background scan priority";
+
+"settings.albums_favorites.title" = "Albums & Favorites";
+"settings.albums_favorites.subtitle" = "Configure album/favorite interaction behavior.";
+"settings.albums.confirm_remove_favorite" = "Confirm before removing favorite";
+"settings.albums.confirm_delete_album" = "Confirm before deleting album";
+"settings.albums.auto_select_created" = "Auto-select album after creation";
+"settings.albums.show_favorite_star" = "Show favorite star in gallery";
+
+"settings.file_path_actions.title" = "File & Path Actions";
+"settings.file_path_actions.subtitle" = "Control path display and destructive-file confirmations.";
+"settings.file.confirm_move_trash" = "Confirm before move to Trash";
+"settings.file.show_full_path" = "Show full selected-folder path";
+"settings.file.copy_path_format" = "Copy path format";
+
+"settings.diagnostics.application.title" = "Application";
+"settings.diagnostics.application.subtitle" = "Build and version information.";
+"settings.diagnostics.maintenance.title" = "Maintenance";
+"settings.diagnostics.maintenance.subtitle" = "Quick maintenance actions.";
+"settings.diagnostics.clear_caches" = "Clear Caches";
+"settings.diagnostics.export_diagnostics" = "Export Diagnostics";
+"settings.diagnostics.danger_zone.title" = "Danger Zone";
+"settings.diagnostics.danger_zone.subtitle" = "Reset all settings to defaults.";
+"settings.diagnostics.reset_all" = "Reset All Settings";
+
+"settings.message.general_reset" = "General settings reset.";
+"settings.message.viewer_reset" = "Viewer settings reset.";
+"settings.message.performance_reset" = "Performance settings reset.";
+"settings.message.albums_privacy_reset" = "Albums & Privacy settings reset.";
+"settings.message.caches_cleared" = "Caches cleared.";
+"settings.message.all_reset" = "Settings reset to defaults.";
+
+"topbar.albums" = "Albums";
+"topbar.search" = "Search";
+
+"sort.name" = "Name";
+
+"sort.date" = "Date";
+
+"sort.size" = "Size";
