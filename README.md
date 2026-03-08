@@ -1,47 +1,92 @@
 # LumiNest
 
-Version: `0.2.0`
+Version: `1.0.1-RC`
 
-A macOS SwiftUI gallery app that lets you:
+LumiNest is a macOS gallery app for photos and videos, built with SwiftUI.
 
-- Select any folder on disk.
-- Discover photos and videos recursively.
-- Auto-refresh when media is added/removed in the selected folder.
-- View media in `Grid` or `List` mode.
-- Open any item in a viewer and navigate `Previous` / `Next`.
-- Move through media with swipe (trackpad/mouse drag) or left/right arrow keys.
-- Use keyboard shortcuts (`Cmd+O`, `Cmd+F`, `Cmd+,`, `Space`, `Esc`, `F`, `R`).
-- Manage albums and favorites with persistent local SQLite storage.
-- Use Settings Center to configure default behavior and performance.
+## Features
 
-## Run
+- Folder-based library browsing (recursive scan).
+- Grid and List display modes.
+- Fast preview with next/previous navigation.
+- Keyboard shortcuts:
+- `Cmd+O` select folder
+- `Cmd+F` focus search
+- `Cmd+,` open settings
+- `Space` play/pause video
+- `R` replay video
+- `Esc` close viewer
+- Favorites and Albums with persistent local SQLite storage.
+- Metadata panel for images and videos.
+- Search, media type filters, and sorting (date/name/size).
+- Media-only fullscreen preview mode.
+- Auto-refresh when folder content changes.
+- Settings Center (viewer behavior, defaults, performance, language).
+- Multi-language localization support.
 
-### Option 1: Xcode (recommended)
-1. Open terminal in this folder.
-2. Run:
-   ```bash
-   open Package.swift
-   ```
-3. In Xcode, choose the `LumiNest` scheme.
-4. Press Run.
+## Project Structure
 
-### Option 2: SwiftPM
+- App sources: `Sources/LumiNest`
+- Localized strings: `Sources/LumiNest/Resources/*.lproj/Localizable.strings`
+- SVG logo source: `assets/logos/prism-stack.svg`
+
+## Run (Development)
+
+### Xcode
+
+```bash
+open Package.swift
+```
+
+Then select scheme `LumiNest` and Run.
+
+### SwiftPM
+
 ```bash
 swift run LumiNest
 ```
 
-## Supported media
+## Build
 
-Images:
-`jpg`, `jpeg`, `png`, `heic`, `gif`, `bmp`, `tiff`, `webp`, `raw`
+```bash
+xcodebuild \
+  -scheme LumiNest \
+  -configuration Release \
+  -destination "platform=macOS" \
+  -derivedDataPath build \
+  build
+```
 
-Videos:
-`mp4`, `mov`, `m4v`, `avi`, `mkv`, `wmv`, `flv`, `webm`
+## Build a `.app` Bundle
 
-## Viewer highlights
+SwiftPM output is an executable binary, so create the app bundle explicitly:
 
-- Click outside preview to close.
-- Side arrow controls for previous/next.
-- Star button for favorites.
-- Info button to show/hide metadata details.
-- Media-only fullscreen toggle.
+```bash
+APP="dist/LumiNest.app"
+PRODUCTS="build/Build/Products/Release"
+BIN="$PRODUCTS/LumiNest"
+
+rm -rf "$APP"
+mkdir -p "$APP/Contents/MacOS" "$APP/Contents/Resources"
+cp "$BIN" "$APP/Contents/MacOS/LumiNest"
+chmod +x "$APP/Contents/MacOS/LumiNest"
+cp -R "$PRODUCTS"/*.bundle "$APP/Contents/Resources/"
+```
+
+Add a valid `Info.plist` under `LumiNest.app/Contents/Info.plist` before distribution.
+
+## Package for Release
+
+```bash
+cd dist
+ditto -c -k --sequesterRsrc --keepParent LumiNest.app LumiNest-1.0.1-RC.zip
+```
+
+## Supported Media
+
+Images: `jpg`, `jpeg`, `png`, `heic`, `gif`, `bmp`, `tiff`, `webp`, `raw`  
+Videos: `mp4`, `mov`, `m4v`, `avi`, `mkv`, `wmv`, `flv`, `webm`
+
+## License
+
+GNU GPL v3.0 only (`GPL-3.0-only`). See [LICENSE](LICENSE).

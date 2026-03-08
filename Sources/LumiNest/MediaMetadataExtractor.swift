@@ -66,15 +66,31 @@ enum MediaMetadataExtractor {
     }
 
     private static func videoMetadata(for url: URL) -> [MetadataEntry] {
-        let asset = AVURLAsset(url: url)
+        let asset = AVURLAsset(
+            url: url,
+            options: [AVURLAssetPreferPreciseDurationAndTimingKey: false]
+        )
         var entries: [MetadataEntry] = []
 
-        let duration = CMTimeGetSeconds(asset.duration)
-        if duration.isFinite && duration > 0 {
-            entries.append(MetadataEntry(label: "Duration", value: formatDuration(duration)))
+        let group = DispatchGroup()
+        group.enter()
+        asset.loadValuesAsynchronously(forKeys: ["duration", "tracks"]) {
+            group.leave()
+        }
+        _ = group.wait(timeout: .now() + 3)
+
+        var durationError: NSError?
+        let durationStatus = asset.statusOfValue(forKey: "duration", error: &durationError)
+        if durationStatus == .loaded {
+            let duration = CMTimeGetSeconds(asset.duration)
+            if duration.isFinite && duration > 0 {
+                entries.append(MetadataEntry(label: "Duration", value: formatDuration(duration)))
+            }
         }
 
-        if let track = asset.tracks(withMediaType: .video).first {
+        var tracksError: NSError?
+        let tracksStatus = asset.statusOfValue(forKey: "tracks", error: &tracksError)
+        if tracksStatus == .loaded, let track = asset.tracks(withMediaType: .video).first {
             let transformed = track.naturalSize.applying(track.preferredTransform)
             let width = Int(abs(transformed.width))
             let height = Int(abs(transformed.height))

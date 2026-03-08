@@ -112,7 +112,24 @@ struct ContentView: View {
         .onChange(of: defaultMediaRootPath) { _ in
             viewModel.syncDefaultRootFromSettings(loadIfNeeded: true)
         }
+        .onChange(of: isViewerMediaFullscreen) { wantsFullscreen in
+            syncWindowFullscreen(wantsFullscreen)
+        }
+        .onChange(of: selectedItem == nil) { closed in
+            guard closed else { return }
+            isViewerMediaFullscreen = false
+            syncWindowFullscreen(false)
+        }
         .id("content-\(uiLanguage)")
+    }
+
+    private func syncWindowFullscreen(_ shouldBeFullscreen: Bool) {
+        DispatchQueue.main.async {
+            guard let window = NSApp.keyWindow ?? NSApp.mainWindow ?? NSApp.windows.first else { return }
+            let isFullscreen = window.styleMask.contains(.fullScreen)
+            guard isFullscreen != shouldBeFullscreen else { return }
+            window.toggleFullScreen(nil)
+        }
     }
 
     private var layoutMode: LayoutMode {
@@ -1141,81 +1158,37 @@ struct MediaViewer: View {
 
     var body: some View {
         VStack(spacing: 12) {
-            HStack {
-                Text(currentItem.filename)
-                    .font(.system(size: 15, weight: .semibold))
-                    .padding(.horizontal, 12)
-                    .frame(height: 34)
-                    .background(.thinMaterial)
-                    .clipShape(Capsule())
-                    .lineLimit(1)
-
-                Spacer()
-
-                Button {
-                    toggleCurrentFavorite()
-                } label: {
-                    Image(systemName: isFavorite(currentItem) ? "star.fill" : "star")
-                }
-                .buttonStyle(.plain)
-                .font(.system(size: 18, weight: .semibold))
-                .foregroundStyle(isFavorite(currentItem) ? .yellow : .primary)
-                .frame(width: 34, height: 34)
-                .background(.thinMaterial)
-                .clipShape(Circle())
-
-                Button {
-                    isDetailsExpanded.toggle()
-                } label: {
-                    Image(systemName: "info.circle")
-                }
-                .buttonStyle(.plain)
-                .font(.system(size: 18, weight: .semibold))
-                .foregroundStyle(isDetailsExpanded ? .primary : .secondary)
-                .frame(width: 34, height: 34)
-                .background(.thinMaterial)
-                .clipShape(Circle())
-
-                Button {
-                    isMediaOnlyFullscreen.toggle()
-                    isExternalFullscreen = isMediaOnlyFullscreen
-                } label: {
-                    Image(systemName: isMediaOnlyFullscreen ? "arrow.down.right.and.arrow.up.left" : "arrow.up.left.and.arrow.down.right")
-                }
-                .buttonStyle(.plain)
-                .font(.system(size: 18, weight: .semibold))
-                .foregroundStyle(.secondary)
-                .frame(width: 34, height: 34)
-                .background(.thinMaterial)
-                .clipShape(Circle())
-
-                Text("\(currentIndex + 1) / \(mediaItems.count)")
-                    .font(.system(size: 15, weight: .semibold))
-                    .foregroundStyle(.primary)
-                    .frame(height: 34)
-                    .padding(.horizontal, 12)
-                    .background(.thinMaterial)
-                    .clipShape(Capsule())
-            }
-
             if isMediaOnlyFullscreen {
-                ZStack {
+                ZStack(alignment: .top) {
                     mediaCanvas(cornerRadius: 0)
                         .ignoresSafeArea()
 
-                    HStack {
-                        sideArrow(systemName: "chevron.left", disabled: currentIndex == 0) {
-                            previous()
-                        }
-                        Spacer()
-                        sideArrow(systemName: "chevron.right", disabled: currentIndex == mediaItems.count - 1) {
-                            next()
-                        }
+                    VStack(spacing: 0) {
+                        topBar
+                            .padding(.top, 16)
+                            .padding(.horizontal, 18)
+                        Spacer(minLength: 0)
                     }
-                    .padding(.horizontal, 18)
+
+                    VStack {
+                        Spacer(minLength: 0)
+                        HStack {
+                            sideArrow(systemName: "chevron.left", disabled: currentIndex == 0) {
+                                previous()
+                            }
+                            Spacer()
+                            sideArrow(systemName: "chevron.right", disabled: currentIndex == mediaItems.count - 1) {
+                                next()
+                            }
+                        }
+                        .padding(.horizontal, 18)
+                        Spacer(minLength: 0)
+                    }
                 }
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
             } else {
+                topBar
+
                 HStack(spacing: 14) {
                     sideArrow(systemName: "chevron.left", disabled: currentIndex == 0) {
                         previous()
@@ -1274,6 +1247,65 @@ struct MediaViewer: View {
         }
     }
 
+    private var topBar: some View {
+        HStack {
+            Text(currentItem.filename)
+                .font(.system(size: 15, weight: .semibold))
+                .padding(.horizontal, 12)
+                .frame(height: 34)
+                .background(.thinMaterial)
+                .clipShape(Capsule())
+                .lineLimit(1)
+
+            Spacer()
+
+            Button {
+                toggleCurrentFavorite()
+            } label: {
+                Image(systemName: isFavorite(currentItem) ? "star.fill" : "star")
+            }
+            .buttonStyle(.plain)
+            .font(.system(size: 18, weight: .semibold))
+            .foregroundStyle(isFavorite(currentItem) ? .yellow : .primary)
+            .frame(width: 34, height: 34)
+            .background(.thinMaterial)
+            .clipShape(Circle())
+
+            Button {
+                isDetailsExpanded.toggle()
+            } label: {
+                Image(systemName: "info.circle")
+            }
+            .buttonStyle(.plain)
+            .font(.system(size: 18, weight: .semibold))
+            .foregroundStyle(isDetailsExpanded ? .primary : .secondary)
+            .frame(width: 34, height: 34)
+            .background(.thinMaterial)
+            .clipShape(Circle())
+
+            Button {
+                isMediaOnlyFullscreen.toggle()
+                isExternalFullscreen = isMediaOnlyFullscreen
+            } label: {
+                Image(systemName: isMediaOnlyFullscreen ? "arrow.down.right.and.arrow.up.left" : "arrow.up.left.and.arrow.down.right")
+            }
+            .buttonStyle(.plain)
+            .font(.system(size: 18, weight: .semibold))
+            .foregroundStyle(.secondary)
+            .frame(width: 34, height: 34)
+            .background(.thinMaterial)
+            .clipShape(Circle())
+
+            Text("\(currentIndex + 1) / \(mediaItems.count)")
+                .font(.system(size: 15, weight: .semibold))
+                .foregroundStyle(.primary)
+                .frame(height: 34)
+                .padding(.horizontal, 12)
+                .background(.thinMaterial)
+                .clipShape(Capsule())
+        }
+    }
+
     @ViewBuilder
     private func sideArrow(systemName: String, disabled: Bool, action: @escaping () -> Void) -> some View {
         Button(action: action) {
@@ -1306,6 +1338,8 @@ struct MediaViewer: View {
         loadMetadata(for: currentItem)
 
         if currentItem.type == .video {
+            player?.pause()
+            removePlayerEndObserver()
             image = nil
             isLoadingImage = false
             player = AVPlayer(url: currentItem.url)
@@ -1425,7 +1459,7 @@ struct MediaViewer: View {
                 }
             } else {
                 if let player {
-                    VideoPlayer(player: player)
+                    StableVideoPlayer(player: player)
                 } else {
                     ProgressView()
                 }
@@ -1520,6 +1554,24 @@ struct MediaViewer: View {
         if let keyMonitor {
             NSEvent.removeMonitor(keyMonitor)
             self.keyMonitor = nil
+        }
+    }
+}
+
+private struct StableVideoPlayer: NSViewRepresentable {
+    let player: AVPlayer
+
+    func makeNSView(context: Context) -> AVPlayerView {
+        let view = AVPlayerView(frame: .zero)
+        view.controlsStyle = .floating
+        view.videoGravity = .resizeAspect
+        view.player = player
+        return view
+    }
+
+    func updateNSView(_ nsView: AVPlayerView, context: Context) {
+        if nsView.player !== player {
+            nsView.player = player
         }
     }
 }
