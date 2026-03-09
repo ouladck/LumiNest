@@ -1,0 +1,147 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>LumiNest - macOS Photo & Video Gallery</title>
+    <meta name="description" content="LumiNest is a fast macOS gallery app for photos and videos with albums, favorites, fullscreen preview, and smart navigation." />
+    <link rel="stylesheet" href="assets/styles.css" />
+  </head>
+  <body>
+    <header>
+      <div class="container">
+        <nav>
+          <div class="brand">
+            <img src="assets/prism-stack.svg" alt="LumiNest logo" />
+            <span>LumiNest</span>
+          </div>
+          <div class="nav-links">
+            <a href="#features">Features</a>
+            <a href="#install">Install</a>
+            <a href="#screenshots">Screenshots</a>
+            <a href="#shortcuts">Shortcuts</a>
+          </div>
+        </nav>
+
+        <section class="hero">
+          <article class="hero-card">
+            <h1>Your macOS media gallery, built for speed.</h1>
+            <p>
+              LumiNest helps you browse large photo/video folders, preview instantly,
+              organize with albums/favorites, and navigate with keyboard shortcuts.
+            </p>
+            <div class="cta-row">
+              <a class="btn btn-primary" href="https://github.com/ouladck/LumiNest">View on GitHub</a>
+              <a class="btn btn-secondary" href="#install">Install LumiNest</a>
+            </div>
+          </article>
+
+          <article class="card">
+            <h3 class="feature-title">Release</h3>
+            <p class="muted">Current: <strong>1.0.1-RC</strong></p>
+            <h3 class="feature-title">Platform</h3>
+            <p class="muted">macOS 13+</p>
+            <h3 class="feature-title">License</h3>
+            <p class="muted">GPL-3.0-only</p>
+          </article>
+        </section>
+      </div>
+    </header>
+
+    <main class="container">
+      <section id="features" class="section">
+        <h2>Features</h2>
+        <p class="lead">Built for real-world media libraries, including very large folders.</p>
+        <div class="grid two">
+          <article class="card">
+            <h3 class="feature-title">Library & Navigation</h3>
+            <p class="muted">Folder scan, grid/list views, quick search, media-type filtering, sorting, and next/previous preview navigation.</p>
+          </article>
+          <article class="card">
+            <h3 class="feature-title">Viewer</h3>
+            <p class="muted">Fullscreen preview, side arrows, swipe navigation, metadata panel, image prefetching, and stable video playback.</p>
+          </article>
+          <article class="card">
+            <h3 class="feature-title">Organization</h3>
+            <p class="muted">Favorites, custom albums, multi-selection, and context actions (Reveal in Finder, Delete, Copy path).</p>
+          </article>
+          <article class="card">
+            <h3 class="feature-title">Settings & i18n</h3>
+            <p class="muted">Persistent defaults, configurable root folder, viewer preferences, and multilingual UI support.</p>
+          </article>
+        </div>
+      </section>
+
+      <section id="install" class="section">
+        <h2>Install</h2>
+        <p class="lead">Choose Homebrew for end users, or build from source for development.</p>
+
+        <article class="card">
+          <h3 class="feature-title">Homebrew</h3>
+          <div class="code">brew tap ouladck/luminest
+brew install --cask luminest</div>
+        </article>
+
+        <article class="card" style="margin-top: 12px;">
+          <h3 class="feature-title">Build from source</h3>
+          <div class="code">git clone https://github.com/ouladck/LumiNest.git
+cd LumiNest
+open Package.swift</div>
+        </article>
+      </section>
+
+      <section id="screenshots" class="section">
+        <h2>Screenshots</h2>
+        <p class="lead">Drop screenshot files into <code>web/screenshots/</code> with the names below.</p>
+
+        <div class="screenshots">
+          <article class="shot" data-shot="library.png">
+            <img src="screenshots/library.png" alt="Library view screenshot" />
+            <div class="placeholder">Add <code>web/screenshots/library.png</code></div>
+          </article>
+          <article class="shot" data-shot="viewer.png">
+            <img src="screenshots/viewer.png" alt="Viewer screenshot" />
+            <div class="placeholder">Add <code>web/screenshots/viewer.png</code></div>
+          </article>
+          <article class="shot" data-shot="settings.png">
+            <img src="screenshots/settings.png" alt="Settings screenshot" />
+            <div class="placeholder">Add <code>web/screenshots/settings.png</code></div>
+          </article>
+        </div>
+      </section>
+
+      <section id="shortcuts" class="section">
+        <h2>Keyboard Shortcuts</h2>
+        <div class="card">
+          <p><span class="kbd">Cmd</span><span class="kbd">O</span> Select folder</p>
+          <p><span class="kbd">Cmd</span><span class="kbd">F</span> Search</p>
+          <p><span class="kbd">Cmd</span><span class="kbd">,</span> Open settings</p>
+          <p><span class="kbd">Space</span> Play/Pause video</p>
+          <p><span class="kbd">R</span> Replay video</p>
+          <p><span class="kbd">Esc</span> Close viewer</p>
+        </div>
+      </section>
+    </main>
+
+    <footer class="container">
+      <p>LumiNest © 2026. Built with SwiftUI for macOS.</p>
+    </footer>
+
+    <script>
+      document.querySelectorAll('.shot').forEach((shot) => {
+        const image = shot.querySelector('img');
+        const placeholder = shot.querySelector('.placeholder');
+        if (!image || !placeholder) return;
+
+        image.addEventListener('load', () => {
+          placeholder.style.display = 'none';
+        });
+
+        image.addEventListener('error', () => {
+          image.style.display = 'none';
+          placeholder.style.display = 'grid';
+        });
+      });
+    </script>
+  </body>
+</html>
